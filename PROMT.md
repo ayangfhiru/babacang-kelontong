@@ -1,186 +1,150 @@
-# Task: Fix PATCH and DELETE TypeScript Errors and Error Handling
+# Task: Use Dedicated Form Pages for Complex Modules and Restore BaseSelect Styling
 
-Periksa dan perbaiki seluruh implementasi API `PATCH` dan `DELETE` pada proyek Nuxt.js ini. Jangan hanya memperbaiki endpoint `brands`; lakukan audit terhadap semua modul dan komponen yang menggunakan metode tersebut.
+Lakukan perubahan pada proyek Nuxt.js yang sedang berjalan. Periksa struktur halaman, komponen form, routing, dan implementasi `BaseSelect` terlebih dahulu sebelum melakukan perubahan.
 
-## 1. Perbaiki TypeScript Error pada `$fetch`
+Tujuan utama:
 
-Contoh error:
+1. Modul dengan form yang panjang atau kompleks tidak lagi menggunakan modal pop-up untuk tambah dan edit data.
+2. Form tambah dan edit menggunakan halaman tersendiri agar seluruh field dapat diakses dengan nyaman.
+3. Komponen `BaseSelect` menggunakan kembali styling dan fitur dari implementasi `BaseSelect` versi lama yang disebut `BaseSelect old`, termasuk dukungan Select2.
 
-```ts
-await $fetch(`/api/brands/${editing.value.id}`, {
-  method: "PATCH",
-  body: values,
-});
-```
+## 1. Ubah Form Panjang Menjadi Halaman Tersendiri
 
-Error:
+Audit semua modul master data, terutama Product.
 
-```text
-Type '"PATCH"' is not assignable to type '"get" | "GET" | undefined'.
-```
+Saat ini, form tambah dan edit menggunakan modal pop-up. Karena form Product memiliki banyak field, sebagian field terpotong atau tertutup di bagian atas sehingga tidak dapat diakses dengan nyaman.
 
-```text
-Type '"DELETE"' is not assignable to type '"get" | "GET" | undefined'.
-```
+### Ketentuan
 
-Kemungkinan penyebabnya adalah tipe HTTP method yang diinferensikan dari konfigurasi endpoint, tipe generik `$fetch`, atau deklarasi API yang tidak sesuai.
+- Identifikasi modul yang memiliki form panjang, banyak field, beberapa bagian, atau relasi kompleks.
+- Untuk modul tersebut, gunakan halaman tersendiri untuk operasi tambah dan edit.
+- Prioritaskan modul Product, lalu terapkan pendekatan yang sama pada modul lain jika memang memiliki masalah serupa.
+- Modul dengan form sederhana boleh tetap menggunakan modal jika modal tersebut masih nyaman digunakan.
+- Jangan mengubah seluruh modul secara membabi buta menjadi halaman tersendiri jika tidak diperlukan.
 
-Ketentuan:
+### Routing
 
-- Periksa versi Nuxt, ofetch, dan tipe API yang digunakan proyek.
-- Periksa seluruh handler pada `server/api`, terutama endpoint dengan metode `PATCH` dan `DELETE`.
-- Pastikan handler server menggunakan deklarasi HTTP method yang benar, misalnya `defineEventHandler` bersama `readBody`, `getRouterParam`, dan utilitas H3 yang sesuai dengan versi proyek.
-- Periksa apakah endpoint sudah memiliki deklarasi tipe yang terlalu sempit sehingga hanya menerima `GET`.
-- Perbaiki akar masalahnya, bukan sekadar menyembunyikan error dengan `as any`, `@ts-ignore`, atau menonaktifkan pemeriksaan TypeScript.
-- Jangan mengubah semua request menjadi `GET` atau menghapus validasi tipe.
-- Pertahankan tipe request dan response yang eksplisit serta konsisten dengan pola proyek.
+Ikuti pola routing dan struktur folder yang sudah digunakan proyek.
 
-Contoh request frontend yang harus tetap dapat digunakan:
+Sebagai contoh, jika sesuai dengan struktur saat ini:
 
-```ts
-await $fetch(`/api/brands/${editing.value.id}`, {
-  method: "PATCH",
-  body: values,
-});
-```
+- `/admin/products` — daftar produk.
+- `/admin/products/create` — tambah produk.
+- `/admin/products/[id]/edit` — edit produk.
 
-```ts
-await $fetch(`/api/brands/${id}`, {
-  method: "DELETE",
-});
-```
+Sesuaikan nama route dan folder dengan konvensi proyek yang sebenarnya. Jangan membuat route duplikat jika pola serupa sudah tersedia.
 
-Contoh tersebut merupakan target perilaku, bukan asumsi bahwa semua endpoint harus menggunakan implementasi server yang sama. Sesuaikan dengan struktur proyek yang sebenarnya.
+### Halaman Tambah dan Edit
 
-## 2. Audit Semua Modul
+Pastikan halaman tambah dan edit memiliki:
 
-Periksa seluruh fitur CRUD yang sudah dibuat, termasuk tetapi tidak terbatas pada:
+- Judul halaman yang sesuai, seperti Tambah Produk atau Edit Produk.
+- Breadcrumb atau navigasi kembali ke daftar data jika pola tersebut digunakan proyek.
+- Form yang ditampilkan secara penuh dan dapat di-scroll melalui halaman.
+- Tombol Simpan dan Batal yang mudah ditemukan.
+- Validasi field yang konsisten dengan implementasi sebelumnya.
+- Loading state saat mengambil data atau menyimpan perubahan.
+- Pesan error dan notifikasi sukses yang sesuai dengan mekanisme notifikasi proyek.
+- Penanganan ketika ID tidak valid atau data yang akan diedit tidak ditemukan.
+- Perlindungan terhadap pengiriman form berulang saat proses penyimpanan berlangsung.
 
-- Product
-- Category
-- Brand
-- Unit
-- Supplier
-- Modul lain yang memiliki fitur update atau delete.
+Untuk halaman edit, ambil data berdasarkan ID dari route, isi form dengan data tersebut, dan kirim perubahan melalui API yang sudah tersedia.
 
-Cari seluruh penggunaan:
+Untuk halaman tambah, gunakan nilai awal dan validasi yang sesuai dengan kebutuhan setiap field.
 
-- `$fetch` dengan `method: "PATCH"`
-- `$fetch` dengan `method: "DELETE"`
-- Pemanggilan API melalui composable atau service
-- Handler server yang menangani pembaruan dan penghapusan
-- Tipe request/response yang berkaitan dengan operasi tersebut.
+### Form Product
 
-Perbaiki semua error yang memiliki akar masalah sama tanpa merusak modul yang sudah berfungsi.
+Periksa semua field Product yang ada saat ini. Jangan menghilangkan field hanya karena form dipindahkan ke halaman tersendiri.
 
-## 3. Tambahkan Penanganan Error untuk PATCH dan DELETE
+- Pertahankan seluruh field, relasi, dan aturan validasi yang sudah berjalan.
+- Gunakan pengelompokan field yang logis jika membantu keterbacaan, misalnya informasi utama, kategori dan merek, satuan, harga, serta informasi tambahan. Sesuaikan dengan field aktual pada proyek.
+- Gunakan layout responsif agar form nyaman digunakan pada desktop maupun layar kecil.
+- Pastikan tidak ada field yang terpotong, tertutup, atau sulit dijangkau.
+- Pastikan dropdown, date picker, dan komponen input lain tidak terpotong oleh container atau elemen dengan `overflow` yang tidak sesuai.
+- Jangan mengubah struktur database atau kontrak API hanya demi memindahkan form.
 
-Pastikan setiap operasi update dan delete menangani kondisi berhasil maupun gagal.
+### Integrasi dengan Daftar Data
 
-Contoh pola penanganan pada frontend:
+Pada halaman daftar Product dan modul lain yang terdampak:
 
-```ts
-try {
-  await $fetch(`/api/brands/${editing.value.id}`, {
-    method: "PATCH",
-    body: values,
-  });
+- Tombol tambah mengarah ke halaman create.
+- Tombol edit pada setiap baris mengarah ke halaman edit sesuai ID.
+- Pertahankan pencarian, filter, pagination, delete, dan fitur lain yang sudah ada.
+- Setelah penyimpanan berhasil, arahkan pengguna kembali ke daftar atau lakukan navigasi yang konsisten dengan pola aplikasi.
+- Jangan menghapus fungsi modal yang masih digunakan oleh modul lain.
 
-  // Jalankan notifikasi sukses dan pembaruan data
-  // menggunakan mekanisme yang sudah ada di proyek.
-} catch (error: unknown) {
-  // Ubah error menjadi pesan yang aman dan informatif.
-  // Tampilkan menggunakan mekanisme notifikasi proyek.
-}
-```
+## 2. Pulihkan Styling dan Fitur `BaseSelect` dari `BaseSelect old`
 
-Untuk delete:
+Periksa implementasi `BaseSelect` saat ini serta file atau versi lama yang disebut `BaseSelect old`.
 
-```ts
-try {
-  await $fetch(`/api/brands/${id}`, {
-    method: "DELETE",
-  });
+Gunakan implementasi lama sebagai referensi utama untuk styling dan fitur Select2 karena implementasi tersebut lebih lengkap.
 
-  // Jalankan notifikasi sukses dan pembaruan data
-  // menggunakan mekanisme yang sudah ada di proyek.
-} catch (error: unknown) {
-  // Tampilkan pesan error yang sesuai.
-}
-```
+### Ketentuan
 
-Jangan menyalin contoh di atas secara membabi buta. Integrasikan dengan composable, komponen notifikasi, dan pola pengelolaan state yang sudah digunakan.
+- Temukan file `BaseSelect old` yang sebenarnya sebelum melakukan perubahan.
+- Bandingkan implementasi lama dengan `BaseSelect` yang aktif saat ini.
+- Pertahankan atau pulihkan styling dari versi lama, termasuk tampilan input, dropdown, opsi, ukuran, spacing, border, focus state, disabled state, dan error state jika fitur tersebut tersedia pada implementasi lama.
+- Pertahankan dukungan Select2 beserta fitur yang memang telah tersedia dan digunakan proyek.
+- Jangan membuat ulang tampilan berdasarkan perkiraan jika implementasi lama masih dapat digunakan sebagai acuan.
+- Jangan mengganti library Select2 atau menambahkan dependency baru tanpa alasan yang jelas.
+- Jangan mengubah komponen menjadi native `<select>` biasa jika hal itu menghilangkan fitur Select2 yang sudah tersedia.
 
-### Ketentuan pesan error
+### Kompatibilitas
 
-- Gunakan pesan dari respons server apabila tersedia dan aman ditampilkan.
-- Jika terjadi validasi gagal, tampilkan pesan validasi yang mudah dipahami.
-- Jika data tidak ditemukan, tampilkan pesan yang sesuai.
-- Jika terjadi konflik constraint atau relasi database, tampilkan pesan yang relevan tanpa membocorkan detail internal database.
-- Jika jaringan bermasalah, tampilkan pesan koneksi yang sesuai.
-- Jika penyebabnya tidak diketahui, gunakan pesan fallback yang ramah pengguna.
-- Jangan menampilkan stack trace, query SQL, kredensial, atau detail internal server kepada pengguna.
-- Gunakan `catch (error: unknown)` dan lakukan pemeriksaan tipe error secara aman. Jika proyek menggunakan `FetchError` dari ofetch, manfaatkan tipe tersebut sesuai versi yang terpasang.
-- Jangan menggunakan `error.message` secara langsung tanpa memeriksa struktur error dan kesesuaian pesannya untuk pengguna.
-- Pastikan notifikasi error tidak menampilkan pesan yang sama berkali-kali.
-- Jangan menampilkan notifikasi sukses jika request gagal.
+Pastikan `BaseSelect` tetap kompatibel dengan seluruh penggunaan yang sudah ada.
 
-## 4. Periksa API Server
+Periksa:
 
-Untuk semua endpoint `PATCH` dan `DELETE`, pastikan:
+- Props dan tipe TypeScript.
+- `v-model` dan sinkronisasi nilai.
+- Penggunaan pada form create dan edit.
+- Pilihan yang berasal dari tabel relasional, seperti Category, Brand, Unit, dan Supplier.
+- Kondisi nilai kosong dan nilai awal saat edit.
+- Loading state dan opsi yang tidak tersedia jika didukung.
+- Pesan validasi dan error.
+- Perilaku dropdown ketika digunakan di dalam halaman dengan scrolling.
 
-- Parameter ID divalidasi sebelum query database.
-- Data request divalidasi menggunakan mekanisme validasi yang sudah digunakan proyek.
-- Operasi update dan delete menghasilkan status HTTP yang sesuai.
-- Error database ditangani secara konsisten.
-- Endpoint mengembalikan response yang sesuai dengan pola proyek.
-- Jika menggunakan UUID, validasi format ID harus sesuai dengan skema database.
-- Relasi dan constraint database tetap dihormati.
-- Jangan menangkap error lalu mengembalikan status sukses secara keliru.
+Jika implementasi lama memiliki API props atau event yang berbeda, buat penyesuaian yang kompatibel tanpa merusak pemanggilan komponen yang sudah ada.
 
-## 5. Konsistensi dan Reusability
+Jangan menyalin seluruh implementasi lama secara membabi buta apabila ada perbaikan penting pada versi aktif. Ambil styling dan fitur yang relevan sambil mempertahankan kompatibilitas.
 
-Jika proyek sudah memiliki helper atau composable untuk:
+## 3. Ikuti Standar Proyek
 
-- Menampilkan notifikasi
-- Mengambil pesan error
-- Menangani error `$fetch`
-- Mengirim request API
+- Ikuti instruksi `AGENTS.md`.
+- Gunakan Vue, Nuxt, Tailwind CSS, dan TypeScript sesuai pola proyek.
+- Berikan tipe eksplisit pada data, props, dan fungsi yang dibuat atau diubah.
+- Ikuti konvensi fungsi `const namaFungsi = () => {}` apabila sesuai dengan pola proyek.
+- Gunakan komponen form yang sudah tersedia, termasuk `BaseSelect`.
+- Gunakan kembali helper, composable, dan mekanisme notifikasi yang sudah ada.
+- Jika aturan proyek mewajibkan `index.ts` untuk ekspor folder, perbarui ekspor tersebut sesuai kebutuhan.
+- Jangan membuat duplikasi komponen form tanpa alasan yang jelas.
+- Jangan menghapus fitur atau file yang masih digunakan.
 
-Gunakan kembali implementasi tersebut.
+## 4. Verifikasi
 
-Jika belum tersedia dan beberapa modul memerlukan logika identik, pertimbangkan membuat helper terpusat di `utils` atau composable sesuai struktur proyek. Hindari duplikasi kode di setiap halaman.
+Setelah implementasi:
 
-Ikuti konvensi `AGENTS.md`, termasuk penggunaan TypeScript eksplisit, struktur folder, dan ekspor melalui `index.ts` jika memang diwajibkan oleh proyek.
+1. Uji halaman daftar Product.
+2. Uji navigasi ke halaman tambah dan edit.
+3. Pastikan semua field Product terlihat dan dapat diakses.
+4. Uji validasi, penyimpanan, pembatalan, dan pesan error.
+5. Pastikan data relasional terpilih dengan benar ketika mengedit produk.
+6. Uji `BaseSelect` dengan Select2, termasuk pencarian opsi, pemilihan nilai, dropdown, dan tampilan error jika fitur tersebut tersedia.
+7. Periksa modul lain yang menggunakan `BaseSelect` agar tidak mengalami regresi.
+8. Jalankan type checking, lint, dan build yang tersedia.
+9. Perbaiki error yang timbul akibat perubahan ini.
 
-## 6. Verifikasi
+Jangan menyatakan pengujian berhasil jika belum benar-benar dijalankan.
 
-Setelah perbaikan:
+## 5. Laporan Akhir
 
-1. Jalankan pemeriksaan tipe TypeScript/Vue yang tersedia.
-2. Jalankan lint dan build jika tersedia.
-3. Validasi skema Prisma jika perubahan menyentuh skema.
-4. Pastikan semua pemanggilan `PATCH` dan `DELETE` tidak lagi menghasilkan error tipe.
-5. Pastikan error server benar-benar ditampilkan pada UI.
-6. Uji skenario berhasil, validasi gagal, data tidak ditemukan, konflik database, dan kegagalan jaringan jika memungkinkan.
+Setelah selesai, laporkan:
 
-Jangan menyatakan pengujian berhasil jika belum dijalankan.
+- Modul yang dipindahkan dari modal ke halaman tersendiri beserta route yang dibuat atau digunakan.
+- File yang ditambah atau diubah.
+- Fitur dan styling `BaseSelect old` yang dipulihkan.
+- Kompatibilitas yang diperiksa pada modul lain.
+- Hasil type checking, lint, build, dan pengujian.
+- Kendala yang belum terselesaikan jika ada.
 
-## Batasan
-
-- Jangan menggunakan `any`, `@ts-ignore`, atau type assertion hanya untuk menghilangkan error.
-- Jangan menonaktifkan pemeriksaan TypeScript.
-- Jangan mengubah perilaku `GET`, `POST`, atau fitur lain yang tidak berkaitan.
-- Jangan menghapus validasi atau mengubah status HTTP hanya untuk membuat build lolos.
-- Jangan melakukan refactor besar di luar ruang lingkup.
-
-## Laporan Akhir
-
-Berikan ringkasan:
-
-1. Akar penyebab error tipe HTTP method.
-2. File yang diperbaiki.
-3. Modul yang sudah diaudit.
-4. Cara penanganan error `PATCH` dan `DELETE` yang diterapkan.
-5. Hasil pemeriksaan TypeScript, lint, dan build.
-6. Error yang masih tersisa jika ada.
+**Batasan:** Fokus pada perbaikan pengalaman form dan pemulihan `BaseSelect`. Jangan melakukan refactor besar pada database, API, autentikasi, atau modul lain yang tidak terkait.

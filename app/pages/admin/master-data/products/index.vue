@@ -12,7 +12,6 @@ import type {
   BrandOption,
   CategoryOption,
   CollectionResponse,
-  CreateProductInput,
   PaginatedResponse,
   Product,
   UnitOption,
@@ -138,54 +137,6 @@ const filterUnitOptions = computed(() => [
 ]);
 
 // ---------------------------------------------------------------------------
-// Create / edit
-// ---------------------------------------------------------------------------
-
-const isFormOpen = ref(false);
-const isSubmitting = ref(false);
-const formErrors = ref<Record<string, string[]>>({});
-const editing = ref<Product | null>(null);
-
-const openCreate = (): void => {
-  editing.value = null;
-  formErrors.value = {};
-  isFormOpen.value = true;
-};
-
-const openEdit = (product: Product): void => {
-  editing.value = product;
-  formErrors.value = {};
-  isFormOpen.value = true;
-};
-
-const handleFormSubmit = async (values: CreateProductInput): Promise<void> => {
-  isSubmitting.value = true;
-  formErrors.value = {};
-
-  try {
-    if (editing.value) {
-      await $fetch(`/api/products/${editing.value.id}`, {
-        method: "PATCH",
-        body: values,
-      });
-      notify.success("Perubahan produk berhasil disimpan.");
-    } else {
-      await $fetch("/api/products", { method: "POST", body: values });
-      notify.success("Produk baru berhasil ditambahkan.");
-    }
-
-    isFormOpen.value = false;
-    await refresh();
-  } catch (err) {
-    const payload = getApiErrorPayload(err);
-    formErrors.value = payload.details ?? {};
-    notify.error(payload.message);
-  } finally {
-    isSubmitting.value = false;
-  }
-};
-
-// ---------------------------------------------------------------------------
 // Delete
 // ---------------------------------------------------------------------------
 
@@ -253,7 +204,7 @@ const goToPage = (page: number): void => {
         </p>
       </div>
 
-      <BaseButton @click="openCreate">
+      <BaseButton @click="navigateTo('/admin/master-data/products/create')">
         <Plus class="h-4 w-4" />
         Tambah Produk
       </BaseButton>
@@ -346,7 +297,11 @@ const goToPage = (page: number): void => {
             }}
           </p>
         </div>
-        <BaseButton v-if="!search" variant="secondary" @click="openCreate">
+        <BaseButton
+          v-if="!search"
+          variant="secondary"
+          @click="navigateTo('/admin/master-data/products/create')"
+        >
           <Plus class="h-4 w-4" />
           Tambah Produk
         </BaseButton>
@@ -414,7 +369,7 @@ const goToPage = (page: number): void => {
                       type="button"
                       class="grid h-9 w-9 place-items-center rounded-xl text-muted transition-colors hover:bg-brand-soft hover:text-brand"
                       :aria-label="`Edit ${product.name}`"
-                      @click="openEdit(product)"
+                      @click="navigateTo(`/admin/master-data/products/${product.id}/edit`)"
                     >
                       <Pencil class="h-4 w-4" />
                     </button>
@@ -476,7 +431,7 @@ const goToPage = (page: number): void => {
                   type="button"
                   class="grid h-9 w-9 place-items-center rounded-xl border border-line text-muted transition-colors hover:text-brand"
                   :aria-label="`Edit ${product.name}`"
-                  @click="openEdit(product)"
+                  @click="navigateTo(`/admin/master-data/products/${product.id}/edit`)"
                 >
                   <Pencil class="h-4 w-4" />
                 </button>
@@ -504,18 +459,6 @@ const goToPage = (page: number): void => {
         />
       </template>
     </section>
-
-    <!-- Create / edit modal -->
-    <ProductForm
-      v-model="isFormOpen"
-      :product="editing"
-      :category-options="categoryOptions"
-      :brand-options="brandOptions"
-      :unit-options="unitOptions"
-      :busy="isSubmitting"
-      :errors="formErrors"
-      @submit="handleFormSubmit"
-    />
 
     <!-- Delete confirmation -->
     <BaseConfirmDialog
