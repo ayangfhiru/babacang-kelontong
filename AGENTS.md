@@ -34,6 +34,7 @@ Use the following technologies when applicable:
 - ESLint for code quality.
 - Prettier for code formatting.
 - Zod or an existing validation library for runtime validation when appropriate.
+- Lucide/vue for icon.
 
 Before introducing a new library, inspect `package.json` and reuse existing dependencies whenever possible.
 

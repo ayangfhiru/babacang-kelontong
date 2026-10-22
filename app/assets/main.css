@@ -1,1 +1,233 @@
 @import "tailwindcss";
+
+/* ============================================================
+   Dark mode: toggled by adding `.dark` on <html> (class strategy)
+   ============================================================ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   Palette — Kassa template (warm cream + green, ref. code.html)
+   Format: HSL triplet used via hsl(var(--token) / alpha)
+   ============================================================ */
+:root {
+  --paper: 42 29% 93%; /* #f3f0e9  background */
+  --surface: 0 0% 100%; /* #ffffff  card */
+  --surface-2: 45 40% 96%; /* #f9f7f1  secondary */
+  --ink: 146 27% 12%; /* #16261d  foreground */
+  --ink-2: 145 15% 28%; /* #3e5447 */
+  --muted: 117 8% 47%; /* #70826f  muted-foreground */
+  --line: 44 21% 86%; /* #e3dfd4  border */
+  --brand: 156 59% 27%; /* #1c6d4c  primary */
+  --on-brand: 0 0% 100%; /* text on primary */
+  --brand-deep: 156 56% 14%; /* #103828  solid brand block */
+  --brand-soft: 143 32% 92%; /* #e4f1e9  chip */
+  --mint: 151 50% 65%; /* #7ad3a8 */
+  --mint-soft: 150 53% 93%; /* #e2f6ec */
+  --amber: 34 71% 46%; /* #c68022 */
+  --amber-soft: 39 77% 91%; /* #faeed8 */
+  --coral: 12 60% 52%; /* #cd583a */
+  --coral-soft: 17 74% 92%; /* #fae5dd */
+  --night: 154 40% 10%; /* #10251c  sidebar */
+}
+
+.dark {
+  --paper: 240 10% 3.9%; /* #09090b */
+  --surface: 240 6% 8%; /* #131316 */
+  --surface-2: 240 3.7% 15.9%; /* #27272a */
+  --ink: 0 0% 98%; /* #fafafa */
+  --ink-2: 240 5% 83%; /* #d4d4d8 */
+  --muted: 240 5% 64.9%; /* #a1a1aa */
+  --line: 240 3.7% 15.9%; /* #27272a */
+
+  --brand: 158 61% 52%; /* #34d399 accent */
+  --on-brand: 240 10% 3.9%;
+  --brand-deep: 156 58% 14%; /* #0f3828 */
+  --brand-soft: 240 3.7% 15.9%;
+  --mint: 152 62% 62%; /* #62daa2 */
+  --mint-soft: 240 3.7% 15.9%;
+  --amber: 41 92% 62%; /* #f7bf45 */
+  --amber-soft: 240 3.7% 15.9%;
+  --coral: 350 82% 68%; /* #f06b81 */
+  --coral-soft: 240 3.7% 15.9%;
+  --night: 240 7% 6%; /* #0e0e10 */
+}
+
+/* ============================================================
+   Theme tokens (Tailwind v4 CSS-first config)
+   `inline` so utilities reference the runtime variables, which
+   keeps the `.dark` class switch working on any element.
+   ============================================================ */
+@theme inline {
+  --color-paper: hsl(var(--paper));
+  --color-surface: hsl(var(--surface));
+  --color-surface-2: hsl(var(--surface-2));
+  --color-ink: hsl(var(--ink));
+  --color-ink-2: hsl(var(--ink-2));
+  --color-muted: hsl(var(--muted));
+  --color-line: hsl(var(--line));
+  --color-brand: hsl(var(--brand));
+  --color-on-brand: hsl(var(--on-brand));
+  --color-brand-deep: hsl(var(--brand-deep));
+  --color-brand-soft: hsl(var(--brand-soft));
+  --color-mint: hsl(var(--mint));
+  --color-mint-soft: hsl(var(--mint-soft));
+  --color-amber: hsl(var(--amber));
+  --color-amber-soft: hsl(var(--amber-soft));
+  --color-coral: hsl(var(--coral));
+  --color-coral-soft: hsl(var(--coral-soft));
+  --color-night: hsl(var(--night));
+
+  --font-display: "Bricolage Grotesque", ui-sans-serif, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --shadow-card: 0 1px 2px rgb(16 35 26 / 0.05), 0 12px 32px -16px rgb(16 35 26 / 0.12);
+  --shadow-pop: 0 2px 4px rgb(16 35 26 / 0.06), 0 24px 48px -20px rgb(16 35 26 / 0.22);
+
+  --radius-4xl: 2rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Grain texture overlay (subtle paper feel from the template) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  opacity: 0.028;
+  pointer-events: none;
+  z-index: 200;
+}
+
+.dark body::before {
+  opacity: 0.05;
+}
+
+/* Visible, consistent focus ring for keyboard navigation */
+:focus-visible {
+  outline: 2px solid hsl(var(--brand));
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--line));
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ============================================================
+   Admin shell — sidebar behavior
+   - mobile: fixed drawer, slides in with `.is-nav-open`
+   - tablet/desktop (>=768px): fixed at the left, collapsible
+   ============================================================ */
+.admin-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  transform: translateX(-100%);
+  transition:
+    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.3s ease;
+  z-index: 60;
+}
+
+.admin-shell.is-nav-open .admin-sidebar {
+  transform: translateX(0);
+}
+
+.admin-shell.is-nav-open .admin-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.admin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(0 0 0 / 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.admin-main {
+  min-width: 0;
+  transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .admin-sidebar {
+    transform: none;
+    width: 264px;
+    z-index: 40;
+  }
+
+  .admin-main {
+    margin-left: 264px;
+  }
+
+  .admin-overlay {
+    display: none;
+  }
+
+  .admin-shell.is-nav-collapsed .admin-sidebar {
+    width: 92px;
+  }
+
+  .admin-shell.is-nav-collapsed .admin-main {
+    margin-left: 92px;
+  }
+
+  .admin-shell.is-nav-collapsed .collapse-hide {
+    display: none;
+  }
+
+  .admin-shell.is-nav-collapsed .nav-item {
+    justify-content: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .admin-shell.is-nav-collapsed .nav-badge,
+  .admin-shell.is-nav-collapsed .nav-section {
+    display: none;
+  }
+
+  .admin-shell.is-nav-collapsed .sidebar-user {
+    justify-content: center;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-sidebar {
+    width: 280px;
+  }
+
+  .admin-main {
+    margin-left: 280px;
+  }
+
+  .admin-shell.is-nav-collapsed .admin-sidebar {
+    width: 92px;
+  }
+
+  .admin-shell.is-nav-collapsed .admin-main {
+    margin-left: 92px;
+  }
+}
