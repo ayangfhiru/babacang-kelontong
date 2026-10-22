@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { BadgeCheck, LoaderCircle, Pencil, Plus, Search, Trash2, TriangleAlert } from "@lucide/vue";
+import {
+  BadgeCheck,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  TriangleAlert,
+} from "@lucide/vue";
 import type { Brand, CreateBrandInput, PaginatedResponse } from "~~/types";
 
 usePageTitle("Merek");
@@ -39,9 +47,12 @@ const listQuery = computed(() => ({
   isActive: filters.isActive || undefined,
 }));
 
-const { data, status, error, refresh } = await useAsyncData<PaginatedResponse<Brand>>(
+const { data, status, error, refresh } = await useAsyncData<
+  PaginatedResponse<Brand>
+>(
   "admin-brands-list",
-  () => $fetch<PaginatedResponse<Brand>>("/api/brands", { query: listQuery.value }),
+  () =>
+    $fetch<PaginatedResponse<Brand>>("/api/brands", { query: listQuery.value }),
   {
     watch: [listQuery],
     default: () => ({ data: [], meta: DEFAULT_META }),
@@ -51,7 +62,9 @@ const { data, status, error, refresh } = await useAsyncData<PaginatedResponse<Br
 const isLoading = computed(() => status.value === "pending");
 const brands = computed(() => data.value?.data ?? []);
 const meta = computed(() => data.value?.meta ?? DEFAULT_META);
-const isRefreshing = computed(() => status.value === "pending" && brands.value.length > 0);
+const isRefreshing = computed(
+  () => status.value === "pending" && brands.value.length > 0,
+);
 const loadFailed = computed(() => Boolean(error.value));
 
 const statusOptions = [
@@ -87,7 +100,10 @@ const handleFormSubmit = async (values: CreateBrandInput): Promise<void> => {
 
   try {
     if (editing.value) {
-      await $fetch(`/api/brands/${editing.value.id}`, { method: "PATCH", body: values });
+      await $fetch(`/api/brands/${editing.value.id}`, {
+        method: "PATCH",
+        body: values,
+      });
       notify.success("Perubahan merek berhasil disimpan.");
     } else {
       await $fetch("/api/brands", { method: "POST", body: values });
@@ -149,10 +165,20 @@ const goToPage = (page: number): void => {
 <template>
   <div>
     <!-- Page heading -->
-    <section class="flex flex-col gap-4 pt-8 pb-7 sm:flex-row sm:items-end sm:justify-between">
+    <section
+      class="flex flex-col gap-4 pt-8 pb-7 sm:flex-row sm:items-end sm:justify-between"
+    >
       <div class="max-w-2xl">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">Master Data</p>
-        <h2 class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Merek</h2>
+        <p
+          class="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand"
+        >
+          Master Data
+        </p>
+        <h2
+          class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl"
+        >
+          Merek
+        </h2>
         <p class="mt-2 text-sm leading-relaxed text-muted">
           Daftar merek barang. Produk tetap boleh tanpa merek.
         </p>
@@ -165,8 +191,12 @@ const goToPage = (page: number): void => {
     </section>
 
     <!-- List -->
-    <section class="overflow-hidden rounded-4xl border border-line/70 bg-surface shadow-card">
-      <div class="flex flex-col gap-3 border-b border-line/70 p-5 sm:flex-row sm:items-center">
+    <section
+      class="overflow-hidden rounded-4xl border border-line/70 bg-surface shadow-card"
+    >
+      <div
+        class="flex flex-col gap-3 border-b border-line/70 p-5 sm:flex-row sm:items-center"
+      >
         <div class="relative flex-1">
           <Search
             class="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted"
@@ -185,23 +215,40 @@ const goToPage = (page: number): void => {
       </div>
 
       <!-- Loading -->
-      <div v-if="isLoading" class="flex items-center justify-center gap-3 py-16 text-muted">
+      <div
+        v-if="isLoading"
+        class="flex items-center justify-center gap-3 py-16 text-muted"
+      >
         <LoaderCircle class="h-5 w-5 animate-spin" />
         <span class="text-sm font-medium">Memuat data merek…</span>
       </div>
 
       <!-- Error -->
-      <div v-else-if="loadFailed" class="flex flex-col items-center gap-4 py-16 text-center">
-        <span class="grid h-12 w-12 place-items-center rounded-2xl bg-coral-soft text-coral">
+      <div
+        v-else-if="loadFailed"
+        class="flex flex-col items-center gap-4 py-16 text-center"
+      >
+        <span
+          class="grid h-12 w-12 place-items-center rounded-2xl bg-coral-soft text-coral"
+        >
           <TriangleAlert class="h-5 w-5" />
         </span>
-        <p class="text-sm font-medium text-ink-2">Gagal memuat data merek. Silakan coba lagi.</p>
-        <BaseButton variant="secondary" @click="refresh()">Muat ulang</BaseButton>
+        <p class="text-sm font-medium text-ink-2">
+          Gagal memuat data merek. Silakan coba lagi.
+        </p>
+        <BaseButton variant="secondary" @click="refresh()"
+          >Muat ulang</BaseButton
+        >
       </div>
 
       <!-- Empty -->
-      <div v-else-if="brands.length === 0" class="flex flex-col items-center gap-4 py-16 text-center">
-        <span class="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand">
+      <div
+        v-else-if="brands.length === 0"
+        class="flex flex-col items-center gap-4 py-16 text-center"
+      >
+        <span
+          class="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand"
+        >
           <BadgeCheck class="h-5 w-5" />
         </span>
         <div>
@@ -222,7 +269,10 @@ const goToPage = (page: number): void => {
 
       <template v-else>
         <!-- Desktop table -->
-        <div class="hidden overflow-x-auto lg:block" :class="{ 'opacity-60': isRefreshing }">
+        <div
+          class="hidden overflow-x-auto lg:block"
+          :class="{ 'opacity-60': isRefreshing }"
+        >
           <table class="w-full text-left">
             <thead>
               <tr
@@ -281,7 +331,10 @@ const goToPage = (page: number): void => {
         </div>
 
         <!-- Mobile & tablet cards -->
-        <div class="divide-y divide-line/60 lg:hidden" :class="{ 'opacity-60': isRefreshing }">
+        <div
+          class="divide-y divide-line/60 lg:hidden"
+          :class="{ 'opacity-60': isRefreshing }"
+        >
           <div v-for="brand in brands" :key="brand.id" class="space-y-3 p-5">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
@@ -296,7 +349,9 @@ const goToPage = (page: number): void => {
             </div>
 
             <div class="flex items-center justify-between gap-3">
-              <p class="text-xs text-muted">Dibuat {{ formatDate(brand.createdAt) }}</p>
+              <p class="text-xs text-muted">
+                Dibuat {{ formatDate(brand.createdAt) }}
+              </p>
 
               <div class="flex items-center gap-1.5">
                 <button

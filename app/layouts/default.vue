@@ -5,7 +5,8 @@ const isNavOpen = ref(false);
 const isCollapsed = ref(false);
 
 onMounted(() => {
-  isCollapsed.value = localStorage.getItem(NAV_COLLAPSED_STORAGE_KEY) === "true";
+  isCollapsed.value =
+    localStorage.getItem(NAV_COLLAPSED_STORAGE_KEY) === "true";
 });
 
 const toggleCollapse = (): void => {
@@ -26,8 +27,15 @@ const { title } = usePageTitle();
 </script>
 
 <template>
-  <div class="admin-shell min-h-screen bg-paper text-ink antialiased" :class="shellClasses">
-    <AppSidebar @toggle-collapse="toggleCollapse" @navigate="closeNav" />
+  <div
+    class="admin-shell min-h-screen bg-paper text-ink antialiased"
+    :class="shellClasses"
+  >
+    <AppSidebar
+      :collapsed="isCollapsed"
+      @toggle-collapse="toggleCollapse"
+      @navigate="closeNav"
+    />
 
     <div class="admin-overlay" aria-hidden="true" @click="closeNav" />
 

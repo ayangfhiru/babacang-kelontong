@@ -20,6 +20,13 @@ export const useNotify = () => {
   };
 
   const push = (message: string, type: ToastType): void => {
+    // Skip when an identical toast is still on screen (e.g. retrying a failed
+    // request within the dismiss window) so users don't see stacked copies.
+    const isDuplicate = toasts.value.some(
+      (toast) => toast.type === type && toast.message === message,
+    );
+    if (isDuplicate) return;
+
     const id = Date.now() + Math.random();
     toasts.value = [...toasts.value, { id, type, message }];
 

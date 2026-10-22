@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { LoaderCircle, PackageOpen, Pencil, Plus, Search, Trash2, TriangleAlert } from "@lucide/vue";
+import {
+  LoaderCircle,
+  PackageOpen,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  TriangleAlert,
+} from "@lucide/vue";
 import type {
   BrandOption,
   CategoryOption,
@@ -53,9 +61,14 @@ const listQuery = computed(() => ({
   isActive: filters.isActive || undefined,
 }));
 
-const { data, status, error, refresh } = await useAsyncData<PaginatedResponse<Product>>(
+const { data, status, error, refresh } = await useAsyncData<
+  PaginatedResponse<Product>
+>(
   "admin-products-list",
-  () => $fetch<PaginatedResponse<Product>>("/api/products", { query: listQuery.value }),
+  () =>
+    $fetch<PaginatedResponse<Product>>("/api/products", {
+      query: listQuery.value,
+    }),
   {
     watch: [listQuery],
     default: () => ({ data: [], meta: DEFAULT_META }),
@@ -65,7 +78,9 @@ const { data, status, error, refresh } = await useAsyncData<PaginatedResponse<Pr
 const isLoading = computed(() => status.value === "pending");
 const products = computed(() => data.value?.data ?? []);
 const meta = computed(() => data.value?.meta ?? DEFAULT_META);
-const isRefreshing = computed(() => status.value === "pending" && products.value.length > 0);
+const isRefreshing = computed(
+  () => status.value === "pending" && products.value.length > 0,
+);
 
 const loadFailed = computed(() => Boolean(error.value));
 
@@ -100,12 +115,18 @@ const statusOptions = [
 
 const filterCategoryOptions = computed(() => [
   { value: "", label: "Semua kategori" },
-  ...categoryOptions.value.map((option) => ({ value: option.id, label: option.name })),
+  ...categoryOptions.value.map((option) => ({
+    value: option.id,
+    label: option.name,
+  })),
 ]);
 
 const filterBrandOptions = computed(() => [
   { value: "", label: "Semua merek" },
-  ...brandOptions.value.map((option) => ({ value: option.id, label: option.name })),
+  ...brandOptions.value.map((option) => ({
+    value: option.id,
+    label: option.name,
+  })),
 ]);
 
 const filterUnitOptions = computed(() => [
@@ -143,7 +164,10 @@ const handleFormSubmit = async (values: CreateProductInput): Promise<void> => {
 
   try {
     if (editing.value) {
-      await $fetch(`/api/products/${editing.value.id}`, { method: "PATCH", body: values });
+      await $fetch(`/api/products/${editing.value.id}`, {
+        method: "PATCH",
+        body: values,
+      });
       notify.success("Perubahan produk berhasil disimpan.");
     } else {
       await $fetch("/api/products", { method: "POST", body: values });
@@ -188,7 +212,9 @@ const handleDelete = async (): Promise<void> => {
   isDeleting.value = true;
 
   try {
-    await $fetch(`/api/products/${deleteTarget.value.id}`, { method: "DELETE" });
+    await $fetch(`/api/products/${deleteTarget.value.id}`, {
+      method: "DELETE",
+    });
     notify.success(`Produk "${deleteTarget.value.name}" berhasil dihapus.`);
     deleteTarget.value = null;
     await refresh();
@@ -207,12 +233,23 @@ const goToPage = (page: number): void => {
 <template>
   <div>
     <!-- Page heading -->
-    <section class="flex flex-col gap-4 pt-8 pb-7 sm:flex-row sm:items-end sm:justify-between">
+    <section
+      class="flex flex-col gap-4 pt-8 pb-7 sm:flex-row sm:items-end sm:justify-between"
+    >
       <div class="max-w-2xl">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">Master Data</p>
-        <h2 class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Produk</h2>
+        <p
+          class="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand"
+        >
+          Master Data
+        </p>
+        <h2
+          class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl"
+        >
+          Produk
+        </h2>
         <p class="mt-2 text-sm leading-relaxed text-muted">
-          Kelola daftar barang yang dijual, termasuk kategori, merek, unit, dan harganya.
+          Kelola daftar barang yang dijual, termasuk kategori, merek, unit, dan
+          harganya.
         </p>
       </div>
 
@@ -223,9 +260,13 @@ const goToPage = (page: number): void => {
     </section>
 
     <!-- List -->
-    <section class="overflow-hidden rounded-4xl border border-line/70 bg-surface shadow-card">
+    <section
+      class="overflow-hidden rounded-4xl border border-line/70 bg-surface shadow-card"
+    >
       <!-- Toolbar -->
-      <div class="flex flex-col gap-3 border-b border-line/70 p-5 lg:flex-row lg:items-center">
+      <div
+        class="flex flex-col gap-3 border-b border-line/70 p-5 lg:flex-row lg:items-center"
+      >
         <div class="relative flex-1">
           <Search
             class="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted"
@@ -238,8 +279,13 @@ const goToPage = (page: number): void => {
           />
         </div>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:w-auto lg:shrink-0">
-          <BaseSelect v-model="filters.categoryId" :options="filterCategoryOptions" />
+        <div
+          class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:w-auto lg:shrink-0"
+        >
+          <BaseSelect
+            v-model="filters.categoryId"
+            :options="filterCategoryOptions"
+          />
           <BaseSelect v-model="filters.brandId" :options="filterBrandOptions" />
           <BaseSelect v-model="filters.unitId" :options="filterUnitOptions" />
         </div>
@@ -250,29 +296,54 @@ const goToPage = (page: number): void => {
       </div>
 
       <!-- Loading -->
-      <div v-if="isLoading" class="flex items-center justify-center gap-3 py-16 text-muted">
+      <div
+        v-if="isLoading"
+        class="flex items-center justify-center gap-3 py-16 text-muted"
+      >
         <LoaderCircle class="h-5 w-5 animate-spin" />
         <span class="text-sm font-medium">Memuat data produk…</span>
       </div>
 
       <!-- Error -->
-      <div v-else-if="loadFailed" class="flex flex-col items-center gap-4 py-16 text-center">
-        <span class="grid h-12 w-12 place-items-center rounded-2xl bg-coral-soft text-coral">
+      <div
+        v-else-if="loadFailed"
+        class="flex flex-col items-center gap-4 py-16 text-center"
+      >
+        <span
+          class="grid h-12 w-12 place-items-center rounded-2xl bg-coral-soft text-coral"
+        >
           <TriangleAlert class="h-5 w-5" />
         </span>
-        <p class="text-sm font-medium text-ink-2">Gagal memuat data produk. Silakan coba lagi.</p>
-        <BaseButton variant="secondary" @click="refresh()">Muat ulang</BaseButton>
+        <p class="text-sm font-medium text-ink-2">
+          Gagal memuat data produk. Silakan coba lagi.
+        </p>
+        <BaseButton variant="secondary" @click="refresh()"
+          >Muat ulang</BaseButton
+        >
       </div>
 
       <!-- Empty -->
-      <div v-else-if="products.length === 0" class="flex flex-col items-center gap-4 py-16 text-center">
-        <span class="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand">
+      <div
+        v-else-if="products.length === 0"
+        class="flex flex-col items-center gap-4 py-16 text-center"
+      >
+        <span
+          class="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand"
+        >
           <PackageOpen class="h-5 w-5" />
         </span>
         <div>
           <p class="text-sm font-semibold text-ink">Belum ada produk</p>
           <p class="mt-1 text-sm text-muted">
-            {{ search || filters.categoryId || filters.brandId || filters.unitId || filters.isActive ? "Tidak ada produk yang cocok dengan pencarian atau filter." : "Tambahkan produk pertama tokomu." }}
+            {{
+              search ||
+              filters.categoryId ||
+              filters.brandId ||
+              filters.unitId ||
+              filters.isActive
+                ? "Tidak ada produk yang cocok dengan pencarian atau filter."
+                : "Tambahkan produk pertama tokomu."
+            }}
           </p>
         </div>
         <BaseButton v-if="!search" variant="secondary" @click="openCreate">
@@ -283,7 +354,10 @@ const goToPage = (page: number): void => {
 
       <template v-else>
         <!-- Desktop table -->
-        <div class="hidden overflow-x-auto lg:block" :class="{ 'opacity-60': isRefreshing }">
+        <div
+          class="hidden overflow-x-auto lg:block"
+          :class="{ 'opacity-60': isRefreshing }"
+        >
           <table class="w-full text-left">
             <thead>
               <tr
@@ -312,15 +386,21 @@ const goToPage = (page: number): void => {
                     <span v-if="product.barcode"> · {{ product.barcode }}</span>
                   </p>
                 </td>
-                <td class="px-4 py-4 text-sm text-ink-2">{{ product.category.name }}</td>
-                <td class="px-4 py-4 text-sm text-ink-2">{{ product.brand?.name ?? "—" }}</td>
+                <td class="px-4 py-4 text-sm text-ink-2">
+                  {{ product.category.name }}
+                </td>
+                <td class="px-4 py-4 text-sm text-ink-2">
+                  {{ product.brand?.name ?? "—" }}
+                </td>
                 <td class="px-4 py-4">
                   <BaseBadge>{{ product.unit.symbol }}</BaseBadge>
                 </td>
                 <td class="px-4 py-4 font-mono text-sm tabular-nums text-ink-2">
                   {{ formatCurrency(product.purchasePrice) }}
                 </td>
-                <td class="px-4 py-4 font-mono text-sm font-semibold tabular-nums">
+                <td
+                  class="px-4 py-4 font-mono text-sm font-semibold tabular-nums"
+                >
                   {{ formatCurrency(product.sellingPrice) }}
                 </td>
                 <td class="px-4 py-4">
@@ -358,18 +438,26 @@ const goToPage = (page: number): void => {
           class="divide-y divide-line/60 lg:hidden"
           :class="{ 'opacity-60': isRefreshing }"
         >
-          <div v-for="product in products" :key="product.id" class="space-y-3 p-5">
+          <div
+            v-for="product in products"
+            :key="product.id"
+            class="space-y-3 p-5"
+          >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="truncate text-sm font-semibold">{{ product.name }}</p>
-                <p class="mt-0.5 font-mono text-xs text-muted">SKU · {{ product.sku }}</p>
+                <p class="mt-0.5 font-mono text-xs text-muted">
+                  SKU · {{ product.sku }}
+                </p>
               </div>
               <BaseBadge :tone="product.isActive ? 'brand' : 'neutral'">
                 {{ product.isActive ? "Aktif" : "Nonaktif" }}
               </BaseBadge>
             </div>
 
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            <div
+              class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted"
+            >
               <span>{{ product.category.name }}</span>
               <span v-if="product.brand">· {{ product.brand.name }}</span>
               <span>· {{ product.unit.symbol }}</span>

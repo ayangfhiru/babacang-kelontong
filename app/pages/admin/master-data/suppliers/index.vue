@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { LoaderCircle, Pencil, Plus, Search, Trash2, TriangleAlert, Truck } from "@lucide/vue";
-import type { CreateSupplierInput, PaginatedResponse, Supplier } from "~~/types";
+import {
+  LoaderCircle,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  TriangleAlert,
+  Truck,
+} from "@lucide/vue";
+import type {
+  CreateSupplierInput,
+  PaginatedResponse,
+  Supplier,
+} from "~~/types";
 
 usePageTitle("Supplier");
 
@@ -39,9 +51,14 @@ const listQuery = computed(() => ({
   isActive: filters.isActive || undefined,
 }));
 
-const { data, status, error, refresh } = await useAsyncData<PaginatedResponse<Supplier>>(
+const { data, status, error, refresh } = await useAsyncData<
+  PaginatedResponse<Supplier>
+>(
   "admin-suppliers-list",
-  () => $fetch<PaginatedResponse<Supplier>>("/api/suppliers", { query: listQuery.value }),
+  () =>
+    $fetch<PaginatedResponse<Supplier>>("/api/suppliers", {
+      query: listQuery.value,
+    }),
   {
     watch: [listQuery],
     default: () => ({ data: [], meta: DEFAULT_META }),
@@ -51,7 +68,9 @@ const { data, status, error, refresh } = await useAsyncData<PaginatedResponse<Su
 const isLoading = computed(() => status.value === "pending");
 const suppliers = computed(() => data.value?.data ?? []);
 const meta = computed(() => data.value?.meta ?? DEFAULT_META);
-const isRefreshing = computed(() => status.value === "pending" && suppliers.value.length > 0);
+const isRefreshing = computed(
+  () => status.value === "pending" && suppliers.value.length > 0,
+);
 const loadFailed = computed(() => Boolean(error.value));
 
 const statusOptions = [
@@ -87,7 +106,10 @@ const handleFormSubmit = async (values: CreateSupplierInput): Promise<void> => {
 
   try {
     if (editing.value) {
-      await $fetch(`/api/suppliers/${editing.value.id}`, { method: "PATCH", body: values });
+      await $fetch(`/api/suppliers/${editing.value.id}`, {
+        method: "PATCH",
+        body: values,
+      });
       notify.success("Perubahan supplier berhasil disimpan.");
     } else {
       await $fetch("/api/suppliers", { method: "POST", body: values });
@@ -130,7 +152,9 @@ const handleDelete = async (): Promise<void> => {
   isDeleting.value = true;
 
   try {
-    await $fetch(`/api/suppliers/${deleteTarget.value.id}`, { method: "DELETE" });
+    await $fetch(`/api/suppliers/${deleteTarget.value.id}`, {
+      method: "DELETE",
+    });
     notify.success(`Supplier "${deleteTarget.value.name}" berhasil dihapus.`);
     deleteTarget.value = null;
     await refresh();
@@ -149,10 +173,20 @@ const goToPage = (page: number): void => {
 <template>
   <div>
     <!-- Page heading -->
-    <section class="flex flex-col gap-4 pt-8 pb-7 sm:flex-row sm:items-end sm:justify-between">
+    <section
+      class="flex flex-col gap-4 pt-8 pb-7 sm:flex-row sm:items-end sm:justify-between"
+    >
       <div class="max-w-2xl">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">Master Data</p>
-        <h2 class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Supplier</h2>
+        <p
+          class="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand"
+        >
+          Master Data
+        </p>
+        <h2
+          class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl"
+        >
+          Supplier
+        </h2>
         <p class="mt-2 text-sm leading-relaxed text-muted">
           Data pemasok barang untuk kebutuhan restock toko.
         </p>
@@ -165,8 +199,12 @@ const goToPage = (page: number): void => {
     </section>
 
     <!-- List -->
-    <section class="overflow-hidden rounded-4xl border border-line/70 bg-surface shadow-card">
-      <div class="flex flex-col gap-3 border-b border-line/70 p-5 sm:flex-row sm:items-center">
+    <section
+      class="overflow-hidden rounded-4xl border border-line/70 bg-surface shadow-card"
+    >
+      <div
+        class="flex flex-col gap-3 border-b border-line/70 p-5 sm:flex-row sm:items-center"
+      >
         <div class="relative flex-1">
           <Search
             class="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted"
@@ -185,18 +223,30 @@ const goToPage = (page: number): void => {
       </div>
 
       <!-- Loading -->
-      <div v-if="isLoading" class="flex items-center justify-center gap-3 py-16 text-muted">
+      <div
+        v-if="isLoading"
+        class="flex items-center justify-center gap-3 py-16 text-muted"
+      >
         <LoaderCircle class="h-5 w-5 animate-spin" />
         <span class="text-sm font-medium">Memuat data supplier…</span>
       </div>
 
       <!-- Error -->
-      <div v-else-if="loadFailed" class="flex flex-col items-center gap-4 py-16 text-center">
-        <span class="grid h-12 w-12 place-items-center rounded-2xl bg-coral-soft text-coral">
+      <div
+        v-else-if="loadFailed"
+        class="flex flex-col items-center gap-4 py-16 text-center"
+      >
+        <span
+          class="grid h-12 w-12 place-items-center rounded-2xl bg-coral-soft text-coral"
+        >
           <TriangleAlert class="h-5 w-5" />
         </span>
-        <p class="text-sm font-medium text-ink-2">Gagal memuat data supplier. Silakan coba lagi.</p>
-        <BaseButton variant="secondary" @click="refresh()">Muat ulang</BaseButton>
+        <p class="text-sm font-medium text-ink-2">
+          Gagal memuat data supplier. Silakan coba lagi.
+        </p>
+        <BaseButton variant="secondary" @click="refresh()"
+          >Muat ulang</BaseButton
+        >
       </div>
 
       <!-- Empty -->
@@ -204,7 +254,9 @@ const goToPage = (page: number): void => {
         v-else-if="suppliers.length === 0"
         class="flex flex-col items-center gap-4 py-16 text-center"
       >
-        <span class="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand">
+        <span
+          class="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand"
+        >
           <Truck class="h-5 w-5" />
         </span>
         <div>
@@ -225,7 +277,10 @@ const goToPage = (page: number): void => {
 
       <template v-else>
         <!-- Desktop table -->
-        <div class="hidden overflow-x-auto lg:block" :class="{ 'opacity-60': isRefreshing }">
+        <div
+          class="hidden overflow-x-auto lg:block"
+          :class="{ 'opacity-60': isRefreshing }"
+        >
           <table class="w-full text-left">
             <thead>
               <tr
@@ -247,16 +302,23 @@ const goToPage = (page: number): void => {
                 <td class="px-7 py-4">
                   <p class="text-sm font-semibold">{{ supplier.name }}</p>
                   <p class="mt-0.5 font-mono text-xs text-muted">
-                    {{ supplier.code ? `Kode · ${supplier.code}` : "Tanpa kode" }}
+                    {{
+                      supplier.code ? `Kode · ${supplier.code}` : "Tanpa kode"
+                    }}
                   </p>
                 </td>
                 <td class="px-4 py-4 text-sm text-ink-2">
                   <p>{{ supplier.contactPerson || "—" }}</p>
-                  <p v-if="supplier.phone" class="mt-0.5 font-mono text-xs text-muted">
+                  <p
+                    v-if="supplier.phone"
+                    class="mt-0.5 font-mono text-xs text-muted"
+                  >
                     {{ supplier.phone }}
                   </p>
                 </td>
-                <td class="px-4 py-4 text-sm text-ink-2">{{ supplier.email || "—" }}</td>
+                <td class="px-4 py-4 text-sm text-ink-2">
+                  {{ supplier.email || "—" }}
+                </td>
                 <td class="px-4 py-4">
                   <BaseBadge :tone="supplier.isActive ? 'brand' : 'neutral'">
                     {{ supplier.isActive ? "Aktif" : "Nonaktif" }}
@@ -288,11 +350,20 @@ const goToPage = (page: number): void => {
         </div>
 
         <!-- Mobile & tablet cards -->
-        <div class="divide-y divide-line/60 lg:hidden" :class="{ 'opacity-60': isRefreshing }">
-          <div v-for="supplier in suppliers" :key="supplier.id" class="space-y-3 p-5">
+        <div
+          class="divide-y divide-line/60 lg:hidden"
+          :class="{ 'opacity-60': isRefreshing }"
+        >
+          <div
+            v-for="supplier in suppliers"
+            :key="supplier.id"
+            class="space-y-3 p-5"
+          >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold">{{ supplier.name }}</p>
+                <p class="truncate text-sm font-semibold">
+                  {{ supplier.name }}
+                </p>
                 <p class="mt-0.5 font-mono text-xs text-muted">
                   {{ supplier.code ? `Kode · ${supplier.code}` : "Tanpa kode" }}
                 </p>

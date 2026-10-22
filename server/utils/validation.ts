@@ -40,7 +40,7 @@ export const paginationQuerySchema = z.object({
 /** Status filter shared by master data modules (`?isActive=true|false`). */
 export const statusFilterSchema = z.stringbool().optional();
 
-/** Route param schema for `:id` (CUID identifiers). */
+/** Route param schema for `:id` (UUID identifiers). */
 export const idParamSchema = z
   .string()
   .trim()

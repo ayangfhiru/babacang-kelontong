@@ -15,97 +15,102 @@ datasource db {
 // ============================================================================
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
   description String?
-  isActive    Boolean  @default(true)
+  isActive    Boolean @default(true) @map("is_active")
 
   products Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([isActive])
+  @@map("categories")
 }
 
 model Brand {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
   description String?
   logo        String?
-  isActive    Boolean  @default(true)
+  isActive    Boolean @default(true) @map("is_active")
 
   products Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([isActive])
+  @@map("brands")
 }
 
 model Unit {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  symbol      String   @unique
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  symbol      String  @unique
   description String?
-  isActive    Boolean  @default(true)
+  isActive    Boolean @default(true) @map("is_active")
 
   products Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([isActive])
+  @@map("units")
 }
 
 model Product {
-  id      String  @id @default(cuid())
+  id      String  @id @default(uuid()) @db.Uuid
   sku     String  @unique
   barcode String? @unique
   name    String
 
   description String?
 
-  categoryId String
+  categoryId String   @map("category_id")
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  brandId String?
-  brand   Brand?   @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  brandId String? @map("brand_id")
+  brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Restrict)
 
-  unitId String
-  unit   Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  unitId String @map("unit_id")
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
 
   // Money is stored as Decimal(14, 2) — never as floating point.
-  purchasePrice Decimal @db.Decimal(14, 2) @default(0)
-  sellingPrice  Decimal @db.Decimal(14, 2) @default(0)
+  purchasePrice Decimal @default(0) @map("purchase_price") @db.Decimal(14, 2)
+  sellingPrice  Decimal @default(0) @map("selling_price") @db.Decimal(14, 2)
 
   image    String?
-  isActive Boolean @default(true)
+  isActive Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([categoryId])
   @@index([brandId])
   @@index([unitId])
   @@index([isActive])
   @@index([name])
+  @@map("products")
 }
 
 model Supplier {
-  id            String  @id @default(cuid())
+  id            String  @id @default(uuid()) @db.Uuid
   code          String? @unique
   name          String
-  contactPerson String?
+  contactPerson String? @map("contact_person")
   email         String?
   // Phone numbers are stored as strings to preserve leading zeros and separators.
   phone         String?
   address       String?
   notes         String?
-  isActive      Boolean @default(true)
+  isActive      Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([isActive])
+  @@map("suppliers")
 }
