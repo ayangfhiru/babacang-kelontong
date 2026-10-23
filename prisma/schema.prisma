@@ -85,6 +85,13 @@ model Product {
   image    String?
   isActive Boolean @default(true) @map("is_active")
 
+  batches         StockBatch[]
+  movements       StockMovement[]
+  purchaseItems   PurchaseItem[]
+  salesItems      SalesItem[]
+  returnItems     ReturnItem[]
+  adjustmentItems StockAdjustmentItem[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -108,9 +115,334 @@ model Supplier {
   notes         String?
   isActive      Boolean @default(true) @map("is_active")
 
+  purchases Purchase[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([isActive])
   @@map("suppliers")
+}
+
+// ============================================================================
+// Authentication
+// ============================================================================
+
+enum UserRole {
+  ADMIN
+  STAFF
+
+  @@map("user_role")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true) @map("is_active")
+
+  purchases        Purchase[]
+  sales            Sales[]
+  returns          Return[]
+  stockAdjustments StockAdjustment[]
+  stockMovements   StockMovement[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@map("users")
+}
+
+// ============================================================================
+// Transactions & Stock (FIFO)
+// ============================================================================
+
+enum TransactionStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+
+  @@map("transaction_status")
+}
+
+enum StockMovementType {
+  PURCHASE
+  SALE
+  RETURN_IN
+  RETURN_OUT
+  ADJUSTMENT
+  PURCHASE_CANCEL
+  SALE_CANCEL
+  RETURN_CANCEL
+  ADJUSTMENT_CANCEL
+
+  @@map("stock_movement_type")
+}
+
+/// A receive-batch of stock for one product, carrying the acquisition cost and
+/// optional expiry date that FIFO/COGS calculations depend on.
+model StockBatch {
+  id              String        @id @default(uuid())
+  productId       String        @map("product_id")
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaseItemId  String?       @unique @map("purchase_item_id")
+  purchaseItem    PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
+  batchNumber     String?       @map("batch_number")
+  receivedAt      DateTime      @map("received_at")
+  expiredAt       DateTime?     @map("expired_at")
+  quantityInitial Int           @map("quantity_initial")
+  quantityRemain  Int           @map("quantity_remain")
+  unitCost        Decimal       @map("unit_cost") @db.Decimal(14, 2)
+
+  allocations     StockAllocation[]
+  movements       StockMovement[]
+  returnItems     ReturnItem[]          @relation("ReturnInBatch")
+  adjustmentItems StockAdjustmentItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([productId, receivedAt])
+  @@index([expiredAt])
+  @@map("stock_batches")
+}
+
+/// Auditable record of every stock change (in or out) for a product/batch.
+model StockMovement {
+  id            String            @id @default(uuid())
+  productId     String            @map("product_id")
+  product       Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  batchId       String?           @map("batch_id")
+  batch         StockBatch?       @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  type          StockMovementType
+  quantity      Int
+  userId        String?           @map("user_id")
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  referenceType String?           @map("reference_type")
+  referenceId   String?           @map("reference_id")
+  note          String?
+  occurredAt    DateTime          @default(now()) @map("occurred_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([productId, occurredAt])
+  @@index([batchId])
+  @@index([referenceType, referenceId])
+  @@map("stock_movements")
+}
+
+model Purchase {
+  id         String            @id @default(uuid())
+  number     String            @unique
+  supplierId String            @map("supplier_id")
+  supplier   Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  status     TransactionStatus @default(DRAFT)
+  date       DateTime
+  notes      String?
+  subtotal   Decimal           @default(0) @db.Decimal(14, 2)
+  discount   Decimal           @default(0) @db.Decimal(14, 2)
+  total      Decimal           @default(0) @db.Decimal(14, 2)
+  userId     String            @map("user_id")
+  user       User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  items       PurchaseItem[]
+  returnItems ReturnItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([date])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String    @id @default(uuid())
+  purchaseId  String    @map("purchase_id")
+  purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId   String    @map("product_id")
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity    Int
+  unitCost    Decimal   @map("unit_cost") @db.Decimal(14, 2)
+  discount    Decimal   @default(0) @db.Decimal(14, 2)
+  subtotal    Decimal   @default(0) @db.Decimal(14, 2)
+  batchNumber String?   @map("batch_number")
+  expiredAt   DateTime? @map("expired_at")
+
+  batch       StockBatch?
+  returnItems ReturnItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@map("purchase_items")
+}
+
+model Sales {
+  id       String            @id @default(uuid())
+  number   String            @unique
+  status   TransactionStatus @default(DRAFT)
+  date     DateTime
+  notes    String?
+  subtotal Decimal           @default(0) @db.Decimal(14, 2)
+  discount Decimal           @default(0) @db.Decimal(14, 2)
+  tax      Decimal           @default(0) @db.Decimal(14, 2)
+  total    Decimal           @default(0) @db.Decimal(14, 2)
+  cogs     Decimal           @default(0) @map("cogs") @db.Decimal(14, 2)
+  userId   String            @map("user_id")
+  user     User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  items SalesItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([date])
+  @@map("sales")
+}
+
+model SalesItem {
+  id        String  @id @default(uuid())
+  salesId   String  @map("sales_id")
+  sales     Sales   @relation(fields: [salesId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(14, 2)
+  discount  Decimal @default(0) @db.Decimal(14, 2)
+  subtotal  Decimal @default(0) @db.Decimal(14, 2)
+  cogs      Decimal @default(0) @db.Decimal(14, 2)
+
+  allocations StockAllocation[]
+  returnItems ReturnItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([salesId])
+  @@index([productId])
+  @@map("sales_items")
+}
+
+/// FIFO allocation of a sales line against one or more stock batches.
+model StockAllocation {
+  id          String     @id @default(uuid())
+  salesItemId String     @map("sales_item_id")
+  salesItem   SalesItem  @relation(fields: [salesItemId], references: [id], onDelete: Cascade)
+  batchId     String     @map("batch_id")
+  batch       StockBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  quantity    Int
+  unitCost    Decimal    @map("unit_cost") @db.Decimal(14, 2)
+  totalCost   Decimal    @map("total_cost") @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([salesItemId])
+  @@index([batchId])
+  @@map("stock_allocations")
+}
+
+enum ReturnKind {
+  SALE
+  PURCHASE
+
+  @@map("return_kind")
+}
+
+model Return {
+  id        String            @id @default(uuid())
+  number    String            @unique
+  kind      ReturnKind
+  status    TransactionStatus @default(DRAFT)
+  date      DateTime
+  reason    String?
+  condition String?
+  notes     String?
+  userId    String            @map("user_id")
+  user      User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  items ReturnItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([kind])
+  @@index([status])
+  @@index([date])
+  @@map("returns")
+}
+
+model ReturnItem {
+  id       String @id @default(uuid())
+  returnId String @map("return_id")
+  return   Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  salesItemId    String?       @map("sales_item_id")
+  salesItem      SalesItem?    @relation(fields: [salesItemId], references: [id], onDelete: Restrict)
+  purchaseItemId String?       @map("purchase_item_id")
+  purchaseItem   PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: Restrict)
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int
+  unitCost  Decimal @default(0) @map("unit_cost") @db.Decimal(14, 2)
+  subtotal  Decimal @default(0) @db.Decimal(14, 2)
+
+  /// For sale returns: whether the goods go back into a sellable batch.
+  restock Boolean     @default(false)
+  /// Batch the returned goods re-enter (sale return restock) or are taken from (purchase return).
+  batchId String?     @map("batch_id")
+  batch   StockBatch? @relation("ReturnInBatch", fields: [batchId], references: [id], onDelete: Restrict)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
+  purchaseId String?   @map("purchase_id")
+
+  @@index([returnId])
+  @@map("return_items")
+}
+
+model StockAdjustment {
+  id     String            @id @default(uuid())
+  number String            @unique
+  status TransactionStatus @default(DRAFT)
+  date   DateTime
+  reason String?
+  notes  String?
+  userId String            @map("user_id")
+  user   User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  items StockAdjustmentItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([date])
+  @@map("stock_adjustments")
+}
+
+model StockAdjustmentItem {
+  id           String          @id @default(uuid())
+  adjustmentId String          @map("adjustment_id")
+  adjustment   StockAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
+  productId    String          @map("product_id")
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  batchId      String?         @map("batch_id")
+  batch        StockBatch?     @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  systemQty    Int             @map("system_qty")
+  physicalQty  Int             @map("physical_qty")
+  difference   Int
+  unitCost     Decimal         @default(0) @map("unit_cost") @db.Decimal(14, 2)
+  reason       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([adjustmentId])
+  @@map("stock_adjustment_items")
 }

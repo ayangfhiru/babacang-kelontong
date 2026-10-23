@@ -47,6 +47,23 @@ export const idParamSchema = z
   .min(1, "Identifier wajib diisi.")
   .max(64, "Identifier terlalu panjang.");
 
+/** `<input type="date">` value: "YYYY-MM-DD" that must be a real calendar date. */
+export const isoDateInputSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid.")
+  .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime()), {
+    message: "Tanggal tidak valid.",
+  });
+
+/** `<input type="datetime-local">` value: "YYYY-MM-DDTHH:mm". */
+export const isoDateTimeInputSchema = z
+  .string()
+  .trim()
+  .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+    message: "Waktu tidak valid.",
+  });
+
 /** Normalize an optional free-text field: empty string becomes null. */
 export const optionalTrimmedText = (maxLength: number, message: string) =>
   z
