@@ -69,13 +69,13 @@ model Product {
 
   description String?
 
-  categoryId String   @map("category_id")
+  categoryId String   @map("category_id") @db.Uuid
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  brandId String? @map("brand_id")
+  brandId String? @map("brand_id") @db.Uuid
   brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Restrict)
 
-  unitId String @map("unit_id")
+  unitId String @map("unit_id") @db.Uuid
   unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
 
   // Money is stored as Decimal(14, 2) — never as floating point.
@@ -136,7 +136,7 @@ enum UserRole {
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
   name         String
   passwordHash String   @map("password_hash")
@@ -185,8 +185,8 @@ enum StockMovementType {
 /// A receive-batch of stock for one product, carrying the acquisition cost and
 /// optional expiry date that FIFO/COGS calculations depend on.
 model StockBatch {
-  id              String        @id @default(uuid())
-  productId       String        @map("product_id")
+  id              String        @id @default(uuid()) @db.Uuid
+  productId       String        @map("product_id") @db.Uuid
   product         Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
   purchaseItemId  String?       @unique @map("purchase_item_id")
   purchaseItem    PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
@@ -212,14 +212,14 @@ model StockBatch {
 
 /// Auditable record of every stock change (in or out) for a product/batch.
 model StockMovement {
-  id            String            @id @default(uuid())
-  productId     String            @map("product_id")
+  id            String            @id @default(uuid()) @db.Uuid
+  productId     String            @map("product_id") @db.Uuid
   product       Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
-  batchId       String?           @map("batch_id")
+  batchId       String?           @map("batch_id") @db.Uuid
   batch         StockBatch?       @relation(fields: [batchId], references: [id], onDelete: SetNull)
   type          StockMovementType
   quantity      Int
-  userId        String?           @map("user_id")
+  userId        String?           @map("user_id") @db.Uuid
   user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   referenceType String?           @map("reference_type")
   referenceId   String?           @map("reference_id")
@@ -235,9 +235,9 @@ model StockMovement {
 }
 
 model Purchase {
-  id         String            @id @default(uuid())
+  id         String            @id @default(uuid()) @db.Uuid
   number     String            @unique
-  supplierId String            @map("supplier_id")
+  supplierId String            @map("supplier_id") @db.Uuid
   supplier   Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   status     TransactionStatus @default(DRAFT)
   date       DateTime
@@ -245,7 +245,7 @@ model Purchase {
   subtotal   Decimal           @default(0) @db.Decimal(14, 2)
   discount   Decimal           @default(0) @db.Decimal(14, 2)
   total      Decimal           @default(0) @db.Decimal(14, 2)
-  userId     String            @map("user_id")
+  userId     String            @map("user_id") @db.Uuid
   user       User              @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   items       PurchaseItem[]
@@ -261,10 +261,10 @@ model Purchase {
 }
 
 model PurchaseItem {
-  id          String    @id @default(uuid())
-  purchaseId  String    @map("purchase_id")
+  id          String    @id @default(uuid()) @db.Uuid
+  purchaseId  String    @map("purchase_id") @db.Uuid
   purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  productId   String    @map("product_id")
+  productId   String    @map("product_id") @db.Uuid
   product     Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity    Int
   unitCost    Decimal   @map("unit_cost") @db.Decimal(14, 2)
@@ -284,7 +284,7 @@ model PurchaseItem {
 }
 
 model Sales {
-  id       String            @id @default(uuid())
+  id       String            @id @default(uuid()) @db.Uuid
   number   String            @unique
   status   TransactionStatus @default(DRAFT)
   date     DateTime
@@ -294,7 +294,7 @@ model Sales {
   tax      Decimal           @default(0) @db.Decimal(14, 2)
   total    Decimal           @default(0) @db.Decimal(14, 2)
   cogs     Decimal           @default(0) @map("cogs") @db.Decimal(14, 2)
-  userId   String            @map("user_id")
+  userId   String            @map("user_id") @db.Uuid
   user     User              @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   items SalesItem[]
@@ -308,10 +308,10 @@ model Sales {
 }
 
 model SalesItem {
-  id        String  @id @default(uuid())
-  salesId   String  @map("sales_id")
+  id        String  @id @default(uuid()) @db.Uuid
+  salesId   String  @map("sales_id") @db.Uuid
   sales     Sales   @relation(fields: [salesId], references: [id], onDelete: Cascade)
-  productId String  @map("product_id")
+  productId String  @map("product_id") @db.Uuid
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity  Int
   unitPrice Decimal @map("unit_price") @db.Decimal(14, 2)
@@ -331,10 +331,10 @@ model SalesItem {
 
 /// FIFO allocation of a sales line against one or more stock batches.
 model StockAllocation {
-  id          String     @id @default(uuid())
-  salesItemId String     @map("sales_item_id")
+  id          String     @id @default(uuid()) @db.Uuid
+  salesItemId String     @map("sales_item_id") @db.Uuid
   salesItem   SalesItem  @relation(fields: [salesItemId], references: [id], onDelete: Cascade)
-  batchId     String     @map("batch_id")
+  batchId     String     @map("batch_id") @db.Uuid
   batch       StockBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
   quantity    Int
   unitCost    Decimal    @map("unit_cost") @db.Decimal(14, 2)
@@ -355,7 +355,7 @@ enum ReturnKind {
 }
 
 model Return {
-  id        String            @id @default(uuid())
+  id        String            @id @default(uuid()) @db.Uuid
   number    String            @unique
   kind      ReturnKind
   status    TransactionStatus @default(DRAFT)
@@ -363,7 +363,7 @@ model Return {
   reason    String?
   condition String?
   notes     String?
-  userId    String            @map("user_id")
+  userId    String            @map("user_id") @db.Uuid
   user      User              @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   items ReturnItem[]
@@ -378,16 +378,16 @@ model Return {
 }
 
 model ReturnItem {
-  id       String @id @default(uuid())
-  returnId String @map("return_id")
+  id       String @id @default(uuid()) @db.Uuid
+  returnId String @map("return_id") @db.Uuid
   return   Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
 
-  salesItemId    String?       @map("sales_item_id")
+  salesItemId    String?       @map("sales_item_id") @db.Uuid
   salesItem      SalesItem?    @relation(fields: [salesItemId], references: [id], onDelete: Restrict)
-  purchaseItemId String?       @map("purchase_item_id")
+  purchaseItemId String?       @map("purchase_item_id") @db.Uuid
   purchaseItem   PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: Restrict)
 
-  productId String  @map("product_id")
+  productId String  @map("product_id") @db.Uuid
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity  Int
   unitCost  Decimal @default(0) @map("unit_cost") @db.Decimal(14, 2)
@@ -396,25 +396,25 @@ model ReturnItem {
   /// For sale returns: whether the goods go back into a sellable batch.
   restock Boolean     @default(false)
   /// Batch the returned goods re-enter (sale return restock) or are taken from (purchase return).
-  batchId String?     @map("batch_id")
+  batchId String?     @map("batch_id") @db.Uuid
   batch   StockBatch? @relation("ReturnInBatch", fields: [batchId], references: [id], onDelete: Restrict)
 
   createdAt  DateTime  @default(now()) @map("created_at")
   purchase   Purchase? @relation(fields: [purchaseId], references: [id])
-  purchaseId String?   @map("purchase_id")
+  purchaseId String?   @map("purchase_id") @db.Uuid
 
   @@index([returnId])
   @@map("return_items")
 }
 
 model StockAdjustment {
-  id     String            @id @default(uuid())
+  id     String            @id @default(uuid()) @db.Uuid
   number String            @unique
   status TransactionStatus @default(DRAFT)
   date   DateTime
   reason String?
   notes  String?
-  userId String            @map("user_id")
+  userId String            @map("user_id") @db.Uuid
   user   User              @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   items StockAdjustmentItem[]
@@ -428,12 +428,12 @@ model StockAdjustment {
 }
 
 model StockAdjustmentItem {
-  id           String          @id @default(uuid())
-  adjustmentId String          @map("adjustment_id")
+  id           String          @id @default(uuid()) @db.Uuid
+  adjustmentId String          @map("adjustment_id") @db.Uuid
   adjustment   StockAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
-  productId    String          @map("product_id")
+  productId    String          @map("product_id") @db.Uuid
   product      Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
-  batchId      String?         @map("batch_id")
+  batchId      String?         @map("batch_id") @db.Uuid
   batch        StockBatch?     @relation(fields: [batchId], references: [id], onDelete: Restrict)
   systemQty    Int             @map("system_qty")
   physicalQty  Int             @map("physical_qty")
