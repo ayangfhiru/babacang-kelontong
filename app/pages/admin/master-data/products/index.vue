@@ -189,13 +189,15 @@ const goToPage = (page: number): void => {
 
 const isScannerOpen = ref(false);
 
-// Barcode already registered: stay on the list and only inform the user (§3A).
-const handleBarcodeExists = (product: BarcodeCheckProduct): void => {
+// Verification confirmed the barcode belongs to a product: inform the user
+// and stay on the list (§3A of the previous prompt).
+const handleBarcodeFound = (product: BarcodeCheckProduct): void => {
   notify.success(`Barcode sudah terdaftar. Produk: ${product.name}.`);
 };
 
-// Barcode is free: open the existing create form prefilled with the scan (§3B).
-const handleBarcodeAvailable = async (barcode: string): Promise<void> => {
+// Verification confirmed no product carries the barcode: open the existing
+// create form prefilled with it (§3B of the previous prompt).
+const handleBarcodeNotFound = async (barcode: string): Promise<void> => {
   isScannerOpen.value = false;
 
   try {
@@ -511,8 +513,10 @@ const handleBarcodeAvailable = async (barcode: string): Promise<void> => {
     <!-- Barcode scanner -->
     <ProductBarcodeScannerModal
       v-model="isScannerOpen"
-      @exists="handleBarcodeExists"
-      @available="handleBarcodeAvailable"
+      not-found-action-label="Buka Form Produk"
+      found-action-label="Selesai"
+      @found="handleBarcodeFound"
+      @not-found="handleBarcodeNotFound"
     />
   </div>
 </template>

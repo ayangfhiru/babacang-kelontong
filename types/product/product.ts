@@ -60,12 +60,20 @@ export interface CreateProductInput {
 
 export type UpdateProductInput = Partial<CreateProductInput>;
 
-/** Minimal product reference returned by the barcode availability check. */
+/** Product reference returned by a successful barcode verification. */
 export interface BarcodeCheckProduct {
   id: string;
   name: string;
+  sku: string;
   /** Always a string so leading zeros from a scan are never lost. */
   barcode: string;
+  categoryName: string;
+  brandName: string | null;
+  unitName: string;
+  unitSymbol: string;
+  /** Remaining stock across every batch (physical truth, expired included). */
+  stock: number;
+  isActive: boolean;
 }
 
 /**

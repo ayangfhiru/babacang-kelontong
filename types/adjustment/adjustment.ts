@@ -44,6 +44,7 @@ export interface StockAdjustmentSummary {
   number: string;
   status: TransactionStatus;
   date: string;
+  reason: string | null;
   itemCount: number;
   user: TransactionUserRef;
   createdAt: string;

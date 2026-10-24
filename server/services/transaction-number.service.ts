@@ -23,10 +23,25 @@ export const nextDocumentNumber = async (
   date: Date,
 ): Promise<string> => {
   const day = datePart(date);
+  const where = { number: { startsWith: `${prefix}-${day}-` } };
 
-  const count = await tx[model].count({
-    where: { number: { startsWith: `${prefix}-${day}-` } },
-  });
+  // Each model has its own WhereInput and delegate type; a switch keeps the
+  // count call type-safe instead of calling it on a union of delegates.
+  let count: number;
+  switch (model) {
+    case "purchase":
+      count = await tx.purchase.count({ where });
+      break;
+    case "sales":
+      count = await tx.sales.count({ where });
+      break;
+    case "return":
+      count = await tx.return.count({ where });
+      break;
+    case "stockAdjustment":
+      count = await tx.stockAdjustment.count({ where });
+      break;
+  }
 
   return `${prefix}-${day}-${pad(count + 1)}`;
 };

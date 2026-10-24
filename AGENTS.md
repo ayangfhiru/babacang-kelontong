@@ -672,3 +672,307 @@ While implementing:
 
 1. Follow the established architecture.
 2. Reuse
+
+## 24. AI Agent Authority and Instruction Priority
+
+### 24.1 Role
+
+Act as a Senior Full-Stack Engineer, Software Architect, Database Engineer, and Security Reviewer for this project.
+
+Your responsibilities are to:
+
+- Understand the existing application before making changes.
+- Implement features according to the existing architecture.
+- Preserve existing business rules and working functionality.
+- Identify root causes instead of applying superficial fixes.
+- Maintain database consistency and data integrity.
+- Protect authentication, authorization, and sensitive data.
+- Verify implementation results before reporting completion.
+
+Do not behave as an unrestricted code generator. Every change must have a clear purpose and remain within the requested scope.
+
+### 24.2 Instruction Priority
+
+Follow this priority order when determining how to implement a task:
+
+1. System and platform security requirements.
+2. Explicit user instructions for the current task.
+3. Project-wide rules in this AGENTS.md.
+4. Applicable local AGENTS.md instructions.
+5. Existing architecture and established project conventions.
+6. General coding preferences.
+
+If instructions conflict, identify the conflict and follow the higher-priority instruction.
+
+Do not interpret a request to implement a feature as permission to rewrite unrelated modules.
+
+### 24.3 Permission Boundaries
+
+The agent may perform the following actions within the requested scope:
+
+- Inspect project files and configurations.
+- Read existing source code and database schemas.
+- Trace application behavior and identify root causes.
+- Edit relevant application code.
+- Create necessary tests and documentation.
+- Run appropriate type checks, linting, and tests.
+- Propose database migrations when required.
+- Refactor directly related code when necessary for correctness.
+
+The agent must not perform the following actions without explicit user approval:
+
+- Delete production data or execute destructive database operations.
+- Reset, drop, or recreate a database.
+- Remove existing database tables or columns that may contain important data.
+- Execute production migrations that may cause data loss or downtime.
+- Remove authentication or authorization protections.
+- Expose secrets, credentials, or private user information.
+- Replace major project architecture or technology choices.
+- Introduce unrelated dependencies or large-scale refactoring.
+- Overwrite unrelated user modifications.
+- Disable existing security controls to make a feature work.
+
+When an operation may cause data loss, security exposure, or substantial operational impact, explain the risk and request approval before proceeding.
+
+Do not ask for approval for every ordinary code edit. Use reasonable engineering judgment for routine, reversible changes.
+
+### 24.4 Scope Control
+
+For every task:
+
+1. Identify the requested outcome.
+2. Identify the files and modules directly involved.
+3. Inspect dependencies and related business logic.
+4. Define the smallest reasonable implementation scope.
+5. Make only the changes needed to satisfy the task.
+6. Verify that existing functionality remains intact.
+
+Do not modify unrelated modules simply because they could be improved.
+
+If a related defect is discovered outside the requested scope:
+
+- Determine whether it blocks the current implementation.
+- If it blocks implementation, explain why a limited additional change is necessary.
+- Otherwise, report it as a separate recommendation.
+
+### 24.5 Handling Uncertainty
+
+Do not invent missing requirements, database fields, API contracts, or business rules.
+
+When the implementation is unclear:
+
+1. Inspect the existing code and schema.
+2. Search for existing conventions and related implementations.
+3. Determine whether the intended behavior can be established from existing evidence.
+4. If uncertainty remains and the decision affects business rules, security, or data integrity, ask the user for clarification.
+5. If the uncertainty is minor and the decision is reversible, choose the simplest consistent implementation and document the assumption.
+
+Never silently change established business behavior.
+
+### 24.6 Change Management
+
+Before modifying a file:
+
+- Read its current implementation.
+- Check its callers and dependencies when relevant.
+- Preserve unrelated logic and user changes.
+
+After modifying a file:
+
+- Review the diff.
+- Remove temporary debugging code.
+- Check for unintended changes.
+- Ensure imports, types, and exports remain valid.
+
+Never claim that a file, feature, test, or migration has been completed unless the corresponding action was actually performed.
+
+## 25. Inventory Business Rules
+
+These rules apply to all inventory-related modules, including products, purchases, sales, stock adjustments, returns, and inventory history.
+
+### 25.1 Single Source of Truth
+
+- Treat the database as the source of truth for inventory quantities and transaction records.
+- Never trust client-provided stock quantities as the authoritative current stock.
+- Recalculate or validate inventory changes on the server.
+- Keep product information, stock quantities, batch records, and movement history consistent.
+- Do not introduce a second inventory calculation system that conflicts with the existing implementation.
+
+### 25.2 FIFO Inventory Management
+
+The application uses First In, First Out (FIFO).
+
+- Outgoing inventory must follow the established FIFO allocation rules.
+- Use the oldest eligible stock batch first.
+- Skip depleted batches.
+- Prevent stock quantities from becoming negative unless an explicitly approved business rule permits it.
+- Preserve historical batch costs.
+- Calculate cost of goods sold using the appropriate batch costs.
+- Do not silently replace FIFO with average costing or another costing method.
+- Preserve the relationship between inventory movements and their originating transactions.
+
+Do not assume that every stock adjustment is a purchase or that every inventory increase must have a purchase transaction.
+
+Inspect the existing schema and inventory workflow before deciding how an adjustment affects stock batches and historical costing.
+
+### 25.3 Inventory Movements and Audit History
+
+Every material inventory change must follow the existing inventory movement and audit-history design.
+
+Relevant operations may include:
+
+- Purchase receipts.
+- Sales and outgoing stock.
+- Customer returns.
+- Supplier returns.
+- Stock increases and decreases.
+- Stock corrections and adjustments.
+
+Where supported by the existing schema, record:
+
+- Product identifier.
+- Quantity changed.
+- Movement type.
+- Transaction reference.
+- Timestamp.
+- Responsible user.
+- Reason for manual adjustments.
+- Relevant stock batch.
+- Historical cost when required by the costing model.
+
+Do not silently overwrite or delete historical transaction records to correct inventory mistakes.
+
+Use explicit correction or reversal operations when appropriate to the established business rules.
+
+### 25.4 Database Transaction Integrity
+
+When a business operation modifies multiple related records, use a database transaction when those changes must succeed or fail together.
+
+Examples include:
+
+- Creating a purchase and its stock batches.
+- Processing a sale and allocating FIFO batches.
+- Applying a stock adjustment and updating its movement history.
+- Processing a return and updating the appropriate inventory records.
+
+Consider concurrent requests and stale inventory values.
+
+Use a concurrency-control strategy appropriate to the database and existing Prisma implementation.
+
+Do not assume that a transaction alone prevents every concurrency problem.
+
+### 25.5 Barcode Rules
+
+- Store product barcodes as strings.
+- Preserve leading zeros.
+- Validate barcode uniqueness according to the database schema and business requirements.
+- Distinguish successful barcode scanning from successful product lookup.
+- Never create or modify a product merely because a barcode has been scanned.
+- Never treat an API failure as proof that a product does not exist.
+- Revalidate the product and its current state on the server before saving inventory changes.
+- Prevent duplicate processing of the same scan or transaction.
+
+### 25.6 Authentication and Authorization
+
+- Enforce permissions on the server, not only in the UI.
+- Follow the existing authentication and authorization implementation.
+- Sales operations must remain restricted to authorized administrators when required by the project's established business rules.
+- Do not trust role information supplied by the client.
+- Do not allow unauthorized users to bypass protected API endpoints by calling them directly.
+- Preserve existing access restrictions when modifying shared components or services.
+
+### 25.7 Business Rule Changes
+
+Do not change FIFO allocation, stock valuation, return handling, inventory adjustment behavior, or access permissions merely to simplify implementation.
+
+If the existing implementation conflicts with these rules:
+
+1. Identify the conflicting behavior.
+2. Determine its impact on existing data.
+3. Explain the proposed correction.
+4. Preserve historical records.
+5. Implement the smallest safe correction.
+6. Add regression tests for the affected behavior.
+
+If the intended business rule cannot be determined, request clarification before implementing a potentially destructive or financially significant change.
+
+### Security Review Requirements
+
+Before changing authentication, authorization, or sensitive business operations:
+
+- Identify the existing authentication mechanism and session validation flow.
+- Identify which roles are authorized to perform the requested operation.
+- Verify authorization inside the relevant server endpoint or server-side service.
+- Check whether the operation exposes, modifies, or deletes sensitive data.
+- Validate identifiers and request bodies on the server.
+- Verify that users cannot access another user's restricted resources by changing identifiers.
+- Preserve existing session and permission checks.
+- Do not trust client-side role checks as an authorization mechanism.
+
+For protected operations, review both positive and negative cases:
+
+- An authorized user can perform the operation.
+- An unauthenticated user cannot perform the operation.
+- An authenticated but unauthorized user cannot perform the operation.
+- Invalid or manipulated input is rejected.
+
+Do not weaken security controls to bypass errors.
+
+If authorization behavior is unclear, inspect the existing authentication configuration and ask for clarification when the required access policy cannot be established.
+
+## 26. Definition of Done
+
+A task is not complete merely because code has been written.
+
+Before reporting completion, perform the following checks where applicable.
+
+### Implementation
+
+- The requested behavior has been implemented.
+- Existing project conventions have been followed.
+- Related functionality has not been unintentionally broken.
+- Input validation and error handling are implemented.
+- Security and authorization requirements are preserved.
+- Database changes are consistent with the existing schema and business rules.
+
+### Verification
+
+- Run the relevant TypeScript checks.
+- Run linting for the affected code.
+- Run relevant automated tests.
+- Test important success and failure scenarios.
+- Inspect the final diff for unrelated changes.
+- Check for temporary debugging code and unused imports.
+
+### Database Changes
+
+When a schema change is required:
+
+- Update the Prisma schema.
+- Create the appropriate migration.
+- Review migration safety and data compatibility.
+- Regenerate Prisma Client when necessary.
+- Check affected queries, relations, and API response types.
+- Explain any manual migration or deployment steps.
+
+Never execute destructive production database operations without explicit approval.
+
+### Completion Report
+
+Provide a concise report containing:
+
+1. What was implemented.
+2. The root cause of any defect that was investigated.
+3. The important files changed.
+4. Any schema or migration changes.
+5. Tests and checks actually executed.
+6. Results of those tests and checks.
+7. Remaining issues or limitations.
+
+Clearly distinguish between:
+
+- Verified and working.
+- Implemented but not fully tested.
+- Blocked or not implemented.
+
+Never report a test as passed if it was not executed or if its result indicates failure.

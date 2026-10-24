@@ -1,38 +1,65 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
-import { LoaderCircle, RefreshCw, ScanBarcode, VideoOff } from "@lucide/vue";
+import {
+  CircleCheck,
+  LoaderCircle,
+  PenLine,
+  RefreshCw,
+  ScanBarcode,
+  TriangleAlert,
+} from "@lucide/vue";
 import type { CameraDevice, Html5Qrcode } from "html5-qrcode";
 import type { BarcodeCheckProduct, BarcodeCheckResponse } from "~~/types";
 
 interface Props {
   modelValue: boolean;
+  /** Action label after verification finds no product (e.g. "Buka Form Produk"). */
+  notFoundActionLabel?: string;
+  /** Action label after a product is verified (default: "Gunakan Produk"). */
+  foundActionLabel?: string;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  notFoundActionLabel: "",
+  foundActionLabel: "Gunakan Produk",
+});
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean];
-  /** Scanned barcode already belongs to a product — parent shows a toast. */
-  exists: [product: BarcodeCheckProduct];
-  /** Barcode is free — parent opens the create form prefilled with it. */
-  available: [barcode: string];
+  /** Verification succeeded and the barcode belongs to a product. */
+  found: [product: BarcodeCheckProduct];
+  /** User acknowledged that verification found no product for the barcode. */
+  notFound: [barcode: string];
 }>();
 
+/**
+ * Scan state and verification state are deliberately separate (§5 PROMT.md):
+ * - "scanned"  = the library decoded a code successfully (camera read only).
+ * - "verified*" = the server confirmed or rejected the product lookup.
+ * A successful scan never implies a registered product, and a failed
+ * verification is never treated as "product does not exist".
+ */
 type Phase =
   | "idle"
   | "starting"
   | "scanning"
-  | "checking"
-  | "found"
-  | "available"
+  | "scanned"
+  | "verifying"
+  | "verified-found"
+  | "verified-missing"
   | "failed";
 
-const VIEWPORT_ID = "product-barcode-scanner-viewport";
+/** Where the current barcode value came from (manual input is never "scanned"). */
+type ScanOrigin = "scan" | "manual";
+
+const VIEWPORT_ID = "barcode-scanner-viewport";
 
 const phase = ref<Phase>("idle");
-const errorMessage = ref("");
-const scannedCode = ref("");
-const foundProduct = ref<BarcodeCheckProduct | null>(null);
+const barcodeValue = ref("");
+const scanOrigin = ref<ScanOrigin>("scan");
+const verifiedProduct = ref<BarcodeCheckProduct | null>(null);
+const verifyError = ref("");
+const cameraError = ref("");
 const cameras = ref<CameraDevice[]>([]);
 const selectedCameraId = ref("");
 
@@ -45,10 +72,14 @@ const cameraOptions = computed(() =>
   })),
 );
 
+const canVerify = computed(
+  () => barcodeValue.value.trim().length > 0 && phase.value !== "verifying",
+);
+
 type ScannerModule = typeof import("html5-qrcode");
 
 // The library touches browser APIs, so it is only ever imported on the client
-// and only after the modal opens (§6 SSR compatibility).
+// and only after the modal opens (SSR safety).
 let scannerModule: ScannerModule | null = null;
 let scanner: Html5Qrcode | null = null;
 /** Bumped on every open/close so late async results never touch a closed modal. */
@@ -60,19 +91,21 @@ const close = (): void => {
   emit("update:modelValue", false);
 };
 
-const continueToForm = (): void => {
-  emit("available", scannedCode.value);
+const handleNotFoundAction = (): void => {
+  emit("notFound", barcodeValue.value.trim());
 };
 
 const resetScanState = (): void => {
   phase.value = "idle";
-  errorMessage.value = "";
-  scannedCode.value = "";
-  foundProduct.value = null;
+  barcodeValue.value = "";
+  scanOrigin.value = "scan";
+  verifiedProduct.value = null;
+  verifyError.value = "";
+  cameraError.value = "";
   isProcessingScan = false;
 };
 
-/** Human-readable message for every camera failure listed in §8. */
+/** Human-readable message for every camera failure listed in §8 PROMT.md. */
 const mapCameraError = (error: unknown): string => {
   if (error instanceof Error) {
     switch (error.name) {
@@ -103,7 +136,7 @@ const pickPreferredCamera = (devices: CameraDevice[]): string => {
   const preferred = devices.find((device) =>
     /back|rear|trong|environment/i.test(device.label),
   );
-  return (preferred ?? devices[0]).id;
+  return preferred?.id ?? devices[0]?.id ?? "";
 };
 
 const stopCamera = async (): Promise<void> => {
@@ -128,39 +161,10 @@ const disposeScanner = async (): Promise<void> => {
   scanner = null;
 };
 
-const verifyBarcode = async (barcode: string): Promise<void> => {
-  const currentSession = session;
-  phase.value = "checking";
-  scannedCode.value = barcode;
-
-  // Release the camera while the lookup runs so the same code is not read again.
-  await stopCamera();
-  if (currentSession !== session) return;
-
-  try {
-    const response = await $fetch<BarcodeCheckResponse>(
-      `/api/products/barcode/${encodeURIComponent(barcode)}`,
-    );
-    if (currentSession !== session) return;
-
-    if (response.exists && response.data) {
-      phase.value = "found";
-      foundProduct.value = response.data;
-      emit("exists", response.data);
-      return;
-    }
-
-    phase.value = "available";
-    emit("available", barcode);
-  } catch {
-    if (currentSession !== session) return;
-    // A failed request is never treated as "barcode available" (§4).
-    phase.value = "failed";
-    errorMessage.value =
-      "Barcode gagal diperiksa ke server. Periksa koneksi lalu coba lagi.";
-  }
-};
-
+/**
+ * Success callback: record the decoded code and stop the camera. NO API call
+ * happens here — verification is an explicit user action (§5C PROMT.md).
+ */
 const handleDecoded = (decodedText: string): void => {
   if (isProcessingScan || phase.value !== "scanning") return;
 
@@ -168,7 +172,13 @@ const handleDecoded = (decodedText: string): void => {
   if (!barcode) return;
 
   isProcessingScan = true;
-  void verifyBarcode(barcode);
+  barcodeValue.value = barcode;
+  scanOrigin.value = "scan";
+  verifiedProduct.value = null;
+  verifyError.value = "";
+  void stopCamera().then(() => {
+    phase.value = "scanned";
+  });
 };
 
 const startScanning = async (): Promise<void> => {
@@ -176,9 +186,11 @@ const startScanning = async (): Promise<void> => {
 
   const currentSession = session;
   phase.value = "starting";
-  errorMessage.value = "";
-  scannedCode.value = "";
-  foundProduct.value = null;
+  cameraError.value = "";
+  barcodeValue.value = "";
+  scanOrigin.value = "scan";
+  verifiedProduct.value = null;
+  verifyError.value = "";
   isProcessingScan = false;
 
   try {
@@ -235,14 +247,57 @@ const startScanning = async (): Promise<void> => {
   } catch (error) {
     if (currentSession !== session) return;
     phase.value = "idle";
-    errorMessage.value = mapCameraError(error);
+    cameraError.value = mapCameraError(error);
   }
 };
 
-const stopScanning = async (): Promise<void> => {
-  await stopCamera();
-  phase.value = "idle";
-  isProcessingScan = false;
+/** "Scan Ulang": drop every previous result and restart the camera. */
+const rescan = (): void => {
+  void startScanning();
+};
+
+/**
+ * Manual edit invalidates any previous verification result so stale product
+ * info is never kept for a changed code (§5D PROMT.md).
+ */
+const handleBarcodeInput = (value: string): void => {
+  barcodeValue.value = value;
+  scanOrigin.value = "manual";
+  verifiedProduct.value = null;
+  verifyError.value = "";
+  if (phase.value !== "scanning") phase.value = "scanned";
+};
+
+const verifyBarcode = async (): Promise<void> => {
+  const barcode = barcodeValue.value.trim();
+  if (!barcode || phase.value === "verifying") return;
+
+  const currentSession = session;
+  phase.value = "verifying";
+  verifyError.value = "";
+  verifiedProduct.value = null;
+
+  try {
+    const response = await $fetch<BarcodeCheckResponse>(
+      `/api/products/barcode/${encodeURIComponent(barcode)}`,
+    );
+    if (currentSession !== session) return;
+
+    if (response.exists && response.data) {
+      verifiedProduct.value = response.data;
+      phase.value = "verified-found";
+      emit("found", response.data);
+      return;
+    }
+
+    phase.value = "verified-missing";
+  } catch {
+    if (currentSession !== session) return;
+    // A failed request is never treated as "product does not exist" (§5C).
+    phase.value = "failed";
+    verifyError.value =
+      "Gagal memeriksa barcode ke server. Periksa koneksi lalu coba lagi.";
+  }
 };
 
 const handleCameraChange = (value: string | number): void => {
@@ -254,6 +309,10 @@ const handleCameraChange = (value: string | number): void => {
   // Only restart a running stream; an idle scanner picks the id up on start.
   if (phase.value === "scanning") void startScanning();
 };
+
+const showViewport = computed(() =>
+  ["idle", "starting", "scanning", "failed"].includes(phase.value),
+);
 
 watch(
   () => props.modelValue,
@@ -282,18 +341,19 @@ onBeforeUnmount(() => {
   <BaseModal
     :model-value="modelValue"
     title="Scan Barcode"
-    description="Arahkan barcode produk ke dalam bingkai pemindaian."
+    description="Arahkan kamera ke barcode produk, lalu verifikasi barcode."
     max-w-xl
     @update:model-value="close"
   >
     <div class="space-y-4 p-6">
       <!-- Camera viewport -->
       <div
+        v-if="showViewport"
         class="relative min-h-[240px] overflow-hidden rounded-3xl border border-line/70 bg-night [&_video]:aspect-video [&_video]:w-full [&_video]:object-cover"
       >
         <div :id="VIEWPORT_ID" class="min-h-[240px] w-full" />
 
-        <!-- Idle / starting / checking / stopped overlay -->
+        <!-- Idle / starting overlay -->
         <div
           v-if="phase !== 'scanning'"
           class="absolute inset-0 grid place-items-center bg-night/85 p-6 text-center"
@@ -306,21 +366,15 @@ onBeforeUnmount(() => {
             </span>
 
             <p
-              v-if="phase === 'starting' || phase === 'checking'"
+              v-if="phase === 'starting'"
               class="flex items-center justify-center gap-2 text-sm text-white/80"
             >
               <LoaderCircle class="h-4 w-4 animate-spin" />
-              {{
-                phase === "starting" ? "Menyalakan kamera…" : "Memeriksa barcode…"
-              }}
+              Menyalakan kamera…
             </p>
 
             <p v-else class="text-sm text-white/80">
-              {{
-                phase === "idle" || phase === "failed"
-                  ? errorMessage || "Kamera tidak aktif."
-                  : "Kamera dimatikan."
-              }}
+              {{ cameraError || "Kamera tidak aktif." }}
             </p>
 
             <BaseButton
@@ -328,12 +382,12 @@ onBeforeUnmount(() => {
               variant="secondary"
               @click="startScanning"
             >
-              {{ errorMessage ? "Coba Lagi" : "Mulai Pindai" }}
+              {{ cameraError ? "Coba Lagi" : "Mulai Pindai" }}
             </BaseButton>
           </div>
         </div>
 
-        <!-- Scanning frame -->
+        <!-- Scanning frame + waiting indicator -->
         <div
           v-else
           class="pointer-events-none absolute inset-0 flex items-center justify-center"
@@ -341,89 +395,196 @@ onBeforeUnmount(() => {
           <div
             class="h-36 w-56 rounded-2xl border-2 border-mint/80 shadow-[0_0_0_9999px_rgba(15,23,42,0.55)]"
           />
+          <span
+            class="absolute bottom-4 inline-flex items-center gap-2 rounded-full bg-night/80 px-3 py-1.5 text-xs font-semibold text-white/85"
+          >
+            <span class="h-2 w-2 animate-pulse rounded-full bg-mint" />
+            Menunggu barcode…
+          </span>
         </div>
       </div>
 
       <p v-if="phase === 'scanning'" class="text-center text-sm text-muted">
-        Posisikan barcode pada bingkai. Mendukung EAN-13, EAN-8, UPC-A, UPC-E,
-        dan Code 128.
+        Arahkan kamera ke barcode produk. Mendukung EAN-13, EAN-8, UPC-A,
+        UPC-E, dan Code 128.
       </p>
 
       <!-- Camera choice when the device exposes more than one camera -->
       <BaseSelect
-        v-if="hasCameraChoice"
+        v-if="hasCameraChoice && showViewport"
         label="Kamera"
         :model-value="selectedCameraId"
         :options="cameraOptions"
         @update:model-value="handleCameraChange"
       />
 
-      <!-- Scan result -->
+      <!-- Scan result: successfully decoded (camera read only, not verified) -->
       <div
-        v-if="phase === 'checking' && scannedCode"
-        class="flex items-center gap-3 rounded-2xl border border-line/70 bg-surface-2/60 p-4"
+        v-if="phase === 'scanned' || phase === 'verifying'"
+        class="rounded-2xl border border-brand/40 bg-brand-soft p-4"
       >
-        <LoaderCircle class="h-4 w-4 shrink-0 animate-spin text-brand" />
-        <div class="min-w-0">
-          <p class="text-sm font-semibold text-ink">Memeriksa barcode…</p>
-          <p class="truncate font-mono text-xs text-muted">{{ scannedCode }}</p>
+        <div class="flex items-center gap-3">
+          <CircleCheck class="h-6 w-6 shrink-0 text-brand" />
+          <div>
+            <p class="text-sm font-semibold text-brand">
+              Barcode berhasil dipindai
+            </p>
+            <p class="text-xs text-muted">
+              Barcode belum diverifikasi ke database. Tekan Verifikasi Barcode.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <BaseInput
+            :model-value="barcodeValue"
+            label="Barcode"
+            inputmode="numeric"
+            :disabled="phase === 'verifying'"
+            @update:model-value="handleBarcodeInput"
+          />
+        </div>
+
+        <p
+          v-if="scanOrigin === 'manual'"
+          class="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber"
+        >
+          <PenLine class="h-3.5 w-3.5" />
+          Barcode dimasukkan manual (bukan hasil pemindaian).
+        </p>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <BaseButton :loading="phase === 'verifying'" :disabled="!canVerify" @click="verifyBarcode">
+            Verifikasi Barcode
+          </BaseButton>
+          <BaseButton variant="secondary" :disabled="phase === 'verifying'" @click="rescan">
+            <RefreshCw class="h-4 w-4" />
+            Scan Ulang
+          </BaseButton>
         </div>
       </div>
 
+      <!-- Verification result: product found -->
       <div
-        v-else-if="phase === 'found' && foundProduct"
+        v-else-if="phase === 'verified-found' && verifiedProduct"
         class="rounded-2xl border border-brand/40 bg-brand-soft p-4"
       >
-        <p class="text-sm font-semibold text-brand">Barcode sudah terdaftar.</p>
-        <p class="mt-1 text-sm font-medium text-ink">{{ foundProduct.name }}</p>
-        <p class="mt-0.5 font-mono text-xs text-muted">
-          {{ foundProduct.barcode }}
+        <div class="flex items-center gap-3">
+          <CircleCheck class="h-6 w-6 shrink-0 text-brand" />
+          <div>
+            <p class="text-sm font-semibold text-brand">Produk ditemukan</p>
+            <p class="font-mono text-xs text-muted">
+              {{ verifiedProduct.barcode }}
+            </p>
+          </div>
+        </div>
+
+        <dl class="mt-3 grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-2">
+          <div>
+            <dt class="text-xs text-muted">Produk</dt>
+            <dd class="font-semibold text-ink">{{ verifiedProduct.name }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-muted">SKU</dt>
+            <dd class="font-mono text-ink-2">{{ verifiedProduct.sku }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-muted">Kategori</dt>
+            <dd class="text-ink-2">{{ verifiedProduct.categoryName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-muted">Merek</dt>
+            <dd class="text-ink-2">{{ verifiedProduct.brandName ?? "—" }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-muted">Satuan</dt>
+            <dd class="text-ink-2">{{ verifiedProduct.unitName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-muted">Stok saat ini</dt>
+            <dd class="font-semibold text-ink">
+              {{ verifiedProduct.stock }} {{ verifiedProduct.unitSymbol }}
+            </dd>
+          </div>
+        </dl>
+
+        <p
+          v-if="!verifiedProduct.isActive"
+          class="mt-3 flex items-center gap-1.5 text-xs font-medium text-amber"
+        >
+          <TriangleAlert class="h-3.5 w-3.5" />
+          Produk berstatus nonaktif.
         </p>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <BaseButton @click="close">{{ props.foundActionLabel }}</BaseButton>
+          <BaseButton variant="secondary" @click="rescan">
+            <RefreshCw class="h-4 w-4" />
+            Scan Ulang
+          </BaseButton>
+        </div>
       </div>
 
+      <!-- Verification result: no product for this barcode -->
       <div
-        v-else-if="phase === 'available'"
-        class="rounded-2xl border border-brand/40 bg-brand-soft p-4"
+        v-else-if="phase === 'verified-missing'"
+        class="rounded-2xl border border-amber/40 bg-amber-soft p-4"
       >
-        <p class="text-sm font-semibold text-ink">Barcode belum terdaftar.</p>
-        <p class="mt-1 text-sm text-muted">
-          Barcode
-          <span class="font-mono text-ink-2">{{ scannedCode }}</span> akan diisi
-          otomatis pada form tambah produk.
-        </p>
+        <div class="flex items-center gap-3">
+          <TriangleAlert class="h-6 w-6 shrink-0 text-amber" />
+          <div>
+            <p class="text-sm font-semibold text-amber">
+              Produk tidak ditemukan
+            </p>
+            <p class="text-xs text-muted">
+              Barcode
+              <span class="font-mono text-ink-2">{{ barcodeValue }}</span>
+              belum terdaftar sebagai produk.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <BaseButton v-if="props.notFoundActionLabel" @click="handleNotFoundAction">
+            {{ props.notFoundActionLabel }}
+          </BaseButton>
+          <BaseButton
+            :variant="props.notFoundActionLabel ? 'secondary' : 'primary'"
+            @click="rescan"
+          >
+            <RefreshCw class="h-4 w-4" />
+            Scan Ulang
+          </BaseButton>
+        </div>
       </div>
 
+      <!-- Verification failed (transport/HTTP error — NOT a missing product) -->
       <div
-        v-else-if="phase === 'failed'"
-        class="rounded-2xl border border-coral/40 bg-coral-soft p-4 text-sm font-medium text-coral"
+        v-else-if="phase === 'failed' && verifyError"
+        class="rounded-2xl border border-coral/40 bg-coral-soft p-4"
       >
-        {{ errorMessage }}
+        <div class="flex items-center gap-3">
+          <TriangleAlert class="h-6 w-6 shrink-0 text-coral" />
+          <div>
+            <p class="text-sm font-semibold text-coral">
+              Gagal memverifikasi barcode
+            </p>
+            <p class="text-xs text-muted">{{ verifyError }}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <BaseButton @click="verifyBarcode">Coba Lagi</BaseButton>
+          <BaseButton variant="secondary" @click="rescan">
+            <RefreshCw class="h-4 w-4" />
+            Scan Ulang
+          </BaseButton>
+        </div>
       </div>
 
-      <!-- Actions -->
-      <div
-        class="flex flex-col-reverse gap-3 border-t border-line/70 pt-4 sm:flex-row sm:justify-end"
-      >
+      <!-- Footer -->
+      <div class="flex justify-end border-t border-line/70 pt-4">
         <BaseButton variant="secondary" @click="close">Tutup</BaseButton>
-
-        <BaseButton v-if="phase === 'scanning'" variant="secondary" @click="stopScanning">
-          <VideoOff class="h-4 w-4" />
-          Hentikan Kamera
-        </BaseButton>
-
-        <BaseButton v-else-if="phase === 'found'" @click="startScanning">
-          <RefreshCw class="h-4 w-4" />
-          Pindai Lagi
-        </BaseButton>
-
-        <BaseButton v-else-if="phase === 'available'" @click="continueToForm">
-          Buka Form Produk
-        </BaseButton>
-
-        <BaseButton v-else-if="phase === 'failed'" @click="startScanning">
-          <RefreshCw class="h-4 w-4" />
-          Coba Lagi
-        </BaseButton>
       </div>
     </div>
   </BaseModal>

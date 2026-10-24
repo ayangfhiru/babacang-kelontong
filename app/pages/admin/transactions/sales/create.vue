@@ -8,46 +8,49 @@ const LIST_ROUTE = "/admin/transactions/sales";
 
 interface Line {
   productId: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
+  quantity: string;
+  unitPrice: string;
+  discount: string;
 }
 
 const notify = useNotify();
 const saving = ref(false);
 const products = ref<Product[]>([]);
 
-/** Local wall-clock value for <input type="datetime-local"> (no timezone shift). */
-const toLocalDateTimeValue = (date: Date): string => {
-  const pad = (value: number): string => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
 const form = reactive({
   // The API expects an ISO datetime from <input type="datetime-local">.
-  date: toLocalDateTimeValue(new Date()),
+  date: toLocalDateTimeInputValue(),
   notes: "",
-  discount: 0,
-  tax: 0,
+  discount: "0",
+  tax: "0",
 });
 
 const items = ref<Line[]>([
-  { productId: "", quantity: 1, unitPrice: 0, discount: 0 },
+  { productId: "", quantity: "1", unitPrice: "0", discount: "0" },
 ]);
 
 const subtotal = computed(() =>
-  items.value.reduce(
-    (sum, item) => sum + item.quantity * item.unitPrice - item.discount,
+  items.value.reduce((sum, item) => {
+    const quantity = parsePositiveInt(item.quantity);
+    const unitPrice = parseNonNegativeMoney(item.unitPrice);
+    const discount = parseNonNegativeMoney(item.discount) ?? 0;
+    if (quantity === null || unitPrice === null) return sum;
+
+    return sum + quantity * unitPrice - discount;
+  }, 0),
+);
+
+const total = computed(() =>
+  Math.max(
+    subtotal.value -
+      (parseNonNegativeMoney(form.discount) ?? 0) +
+      (parseNonNegativeMoney(form.tax) ?? 0),
     0,
   ),
 );
 
-const total = computed(() =>
-  Math.max(subtotal.value - Number(form.discount) + Number(form.tax), 0),
-);
-
 const addItem = (): void => {
-  items.value.push({ productId: "", quantity: 1, unitPrice: 0, discount: 0 });
+  items.value.push({ productId: "", quantity: "1", unitPrice: "0", discount: "0" });
 };
 
 const removeItem = (index: number): void => {
@@ -75,9 +78,9 @@ watch(
   () => items.value.map((item) => item.productId).join(","),
   () => {
     for (const item of items.value) {
-      if (item.unitPrice > 0) continue;
+      if ((parseNonNegativeMoney(item.unitPrice) ?? 0) > 0) continue;
       const product = products.value.find((entry) => entry.id === item.productId);
-      if (product) item.unitPrice = product.sellingPrice;
+      if (product) item.unitPrice = String(product.sellingPrice);
     }
   },
 );
@@ -90,14 +93,15 @@ const submit = async (): Promise<void> => {
     await $fetch("/api/sales", {
       method: "POST",
       body: {
-        ...form,
-        discount: Number(form.discount),
-        tax: Number(form.tax),
+        date: form.date,
+        notes: form.notes.trim() || null,
+        discount: parseNonNegativeMoney(form.discount) ?? 0,
+        tax: parseNonNegativeMoney(form.tax) ?? 0,
         items: items.value.map((item) => ({
           productId: item.productId,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
-          discount: Number(item.discount),
+          quantity: parsePositiveInt(item.quantity) ?? 0,
+          unitPrice: parseNonNegativeMoney(item.unitPrice) ?? 0,
+          discount: parseNonNegativeMoney(item.discount) ?? 0,
         })),
       },
     });
@@ -144,9 +148,9 @@ const submit = async (): Promise<void> => {
           v-model="form.discount"
           label="Diskon (Rp)"
           type="number"
-          min="0"
+          :min="0"
         />
-        <BaseInput v-model="form.tax" label="Pajak (Rp)" type="number" min="0" />
+        <BaseInput v-model="form.tax" label="Pajak (Rp)" type="number" :min="0" />
         <div class="sm:col-span-3">
           <BaseInput v-model="form.notes" label="Catatan" />
         </div>
@@ -179,13 +183,13 @@ const submit = async (): Promise<void> => {
                 <BaseSelect v-model="item.productId" :options="productOptions" />
               </td>
               <td class="p-2">
-                <BaseInput v-model="item.quantity" type="number" min="1" />
+                <BaseInput v-model="item.quantity" type="number" :min="1" />
               </td>
               <td class="p-2">
-                <BaseInput v-model="item.unitPrice" type="number" min="0" />
+                <BaseInput v-model="item.unitPrice" type="number" :min="0" />
               </td>
               <td class="p-2">
-                <BaseInput v-model="item.discount" type="number" min="0" />
+                <BaseInput v-model="item.discount" type="number" :min="0" />
               </td>
               <td class="p-2">
                 <button

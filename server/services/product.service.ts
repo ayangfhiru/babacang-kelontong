@@ -235,15 +235,41 @@ export const checkBarcode = async (rawBarcode: string): Promise<BarcodeCheckResp
 
   const product = await prisma.product.findFirst({
     where: { barcode: { equals: barcode, mode: "insensitive" } },
-    select: { id: true, name: true, barcode: true },
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      barcode: true,
+      isActive: true,
+      category: { select: { name: true } },
+      brand: { select: { name: true } },
+      unit: { select: { name: true, symbol: true } },
+    },
   });
 
   if (!product) return { success: true, exists: false, data: null };
 
+  // Stock truth comes from the batches, never from the client (§25.1).
+  const stock = await prisma.stockBatch.aggregate({
+    where: { productId: product.id },
+    _sum: { quantityRemain: true },
+  });
+
   return {
     success: true,
     exists: true,
-    data: { id: product.id, name: product.name, barcode: product.barcode ?? barcode },
+    data: {
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      barcode: product.barcode ?? barcode,
+      categoryName: product.category.name,
+      brandName: product.brand?.name ?? null,
+      unitName: product.unit.name,
+      unitSymbol: product.unit.symbol,
+      stock: stock._sum.quantityRemain ?? 0,
+      isActive: product.isActive,
+    },
   };
 };
 

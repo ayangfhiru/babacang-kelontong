@@ -261,7 +261,9 @@ const seed = async (): Promise<void> => {
         userId: admin.id,
         type: "ADJUSTMENT",
         quantity: -1,
-        referenceType: "STOCK_ADJUSTMENT",
+        // Must match the value written by the runtime services so cancellation
+        // can find and restore this movement.
+        referenceType: "StockAdjustment",
         referenceId: stockAdjustment.id,
         note: "Penyesuaian stok contoh",
       },

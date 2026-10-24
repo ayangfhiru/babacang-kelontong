@@ -104,6 +104,11 @@ export default defineConfig(
         usePageTitle: "readonly",
         useDebouncedRef: "readonly",
         formatDayLabel: "readonly",
+        toLocalDateInputValue: "readonly",
+        toLocalDateTimeInputValue: "readonly",
+        parseNonNegativeInt: "readonly",
+        parsePositiveInt: "readonly",
+        parseNonNegativeMoney: "readonly",
         getApiErrorPayload: "readonly",
         // Nitro server auto-imports (server/api, server/services, ...).
         defineEventHandler: "readonly",

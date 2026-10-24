@@ -43,3 +43,28 @@ export const formatDayLabel = (value: string | number | Date, locale = "id-ID"):
     year: "numeric",
   }).format(date);
 };
+
+const padTwo = (value: number): string => String(value).padStart(2, "0");
+
+/**
+ * Local `YYYY-MM-DD` value for `<input type="date">`.
+ * Uses the local timezone parts so the picked day never shifts by UTC offset.
+ */
+export const toLocalDateInputValue = (
+  value: string | number | Date = new Date(),
+): string => {
+  const date = toValidDate(value);
+  if (!date) return "";
+
+  return `${date.getFullYear()}-${padTwo(date.getMonth() + 1)}-${padTwo(date.getDate())}`;
+};
+
+/** Local `YYYY-MM-DDTHH:mm` value for `<input type="datetime-local">`. */
+export const toLocalDateTimeInputValue = (
+  value: string | number | Date = new Date(),
+): string => {
+  const date = toValidDate(value);
+  if (!date) return "";
+
+  return `${toLocalDateInputValue(date)}T${padTwo(date.getHours())}:${padTwo(date.getMinutes())}`;
+};

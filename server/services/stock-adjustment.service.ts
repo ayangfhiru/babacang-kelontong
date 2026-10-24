@@ -309,7 +309,8 @@ export const postAdjustment = async (id: string, userId: string): Promise<StockA
 
       if (difference > 0) {
         // Additions require an explicit, auditable unit cost (§7).
-        if (item.unitCost <= 0) {
+        // Prisma Decimal must be converted before comparing with a number.
+        if (toMoney(item.unitCost) <= 0) {
           throw apiError(
             400,
             "BAD_REQUEST",
@@ -344,6 +345,18 @@ export const postAdjustment = async (id: string, userId: string): Promise<StockA
           occurredAt: record.date,
         });
       } else {
+        // Reductions must carry an auditable reason at item or document level
+        // (PROMT.md §3B); enforced server-side at posting time, when the sign
+        // of the difference is authoritative.
+        if (!item.reason && !record.reason) {
+          throw apiError(
+            400,
+            "BAD_REQUEST",
+            `Selisih negatif untuk produk ${item.productId} memerlukan alasan penyesuaian.`,
+            { [item.productId]: ["Alasan wajib diisi untuk stok berkurang."] },
+          );
+        }
+
         // Reductions consume batches FIFO — expired batches included, because
         // a physical shortage applies to everything on the shelf.
         let remaining = -difference;
@@ -483,7 +496,8 @@ export const cancelAdjustment = async (id: string, userId: string): Promise<Stoc
             productId: item.productId,
             batchId: movement.batchId,
             type: "ADJUSTMENT_CANCEL",
-            quantity: qty,
+            // Compensating movement mirrors the original signed quantity.
+            quantity: -movement.quantity,
             userId,
             referenceType: "StockAdjustment",
             referenceId: record.id,
