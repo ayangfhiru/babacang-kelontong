@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import {
   Package,
+  ShoppingCart,
+  ShoppingBag,
+  RotateCcw,
+  ClipboardCheck,
+  Warehouse,
   PanelLeftClose,
   PanelLeftOpen,
   Ruler,
@@ -41,6 +46,21 @@ const sections: NavSection[] = [
       { label: "Merek", to: "/admin/master-data/brands", icon: Tag },
       { label: "Unit", to: "/admin/master-data/units", icon: Ruler },
       { label: "Supplier", to: "/admin/master-data/suppliers", icon: Truck },
+    ],
+  },
+  {
+    title: "Transaksi",
+    items: [
+      { label: "Pembelian", to: "/admin/transactions/purchases", icon: ShoppingBag },
+      { label: "Penjualan", to: "/admin/transactions/sales", icon: ShoppingCart },
+      { label: "Retur", to: "/admin/transactions/returns", icon: RotateCcw },
+    ],
+  },
+  {
+    title: "Inventori",
+    items: [
+      { label: "Stok", to: "/admin/inventory", icon: Warehouse },
+      { label: "Penyesuaian Stok", to: "/admin/inventory/adjustments", icon: ClipboardCheck },
     ],
   },
 ];
