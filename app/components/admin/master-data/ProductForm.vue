@@ -11,6 +11,11 @@ import type { SelectOption } from "~/components/ui/BaseSelect.vue";
 
 interface Props {
   product?: Product | null;
+  /**
+   * Barcode prefilled from the scanner flow on the create page.
+   * Kept as a string so leading zeros survive; ignored when editing.
+   */
+  initialBarcode?: string;
   categoryOptions: CategoryOption[];
   brandOptions: BrandOption[];
   unitOptions: UnitOption[];
@@ -20,6 +25,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   product: null,
+  initialBarcode: "",
   busy: false,
   errors: () => ({}),
 });
@@ -31,7 +37,7 @@ const emit = defineEmits<{
 
 const form = reactive({
   sku: props.product?.sku ?? "",
-  barcode: props.product?.barcode ?? "",
+  barcode: props.product?.barcode ?? props.initialBarcode ?? "",
   name: props.product?.name ?? "",
   description: props.product?.description ?? "",
   categoryId: props.product?.categoryId ?? "",

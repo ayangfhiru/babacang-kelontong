@@ -59,3 +59,22 @@ export interface CreateProductInput {
 }
 
 export type UpdateProductInput = Partial<CreateProductInput>;
+
+/** Minimal product reference returned by the barcode availability check. */
+export interface BarcodeCheckProduct {
+  id: string;
+  name: string;
+  /** Always a string so leading zeros from a scan are never lost. */
+  barcode: string;
+}
+
+/**
+ * Response for `GET /api/products/barcode/:barcode`.
+ * `exists=false` means the barcode is safe to prefill on the create form;
+ * a request failure is a transport/HTTP error, never this shape.
+ */
+export interface BarcodeCheckResponse {
+  success: true;
+  exists: boolean;
+  data: BarcodeCheckProduct | null;
+}

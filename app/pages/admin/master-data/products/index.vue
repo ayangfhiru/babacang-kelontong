@@ -4,11 +4,13 @@ import {
   PackageOpen,
   Pencil,
   Plus,
+  ScanBarcode,
   Search,
   Trash2,
   TriangleAlert,
 } from "@lucide/vue";
 import type {
+  BarcodeCheckProduct,
   BrandOption,
   CategoryOption,
   CollectionResponse,
@@ -16,6 +18,7 @@ import type {
   Product,
   UnitOption,
 } from "~~/types";
+import ProductBarcodeScannerModal from "~/components/product/ProductBarcodeScannerModal.vue";
 
 usePageTitle("Produk");
 
@@ -179,6 +182,31 @@ const handleDelete = async (): Promise<void> => {
 const goToPage = (page: number): void => {
   filters.page = page;
 };
+
+// ---------------------------------------------------------------------------
+// Barcode scanner
+// ---------------------------------------------------------------------------
+
+const isScannerOpen = ref(false);
+
+// Barcode already registered: stay on the list and only inform the user (§3A).
+const handleBarcodeExists = (product: BarcodeCheckProduct): void => {
+  notify.success(`Barcode sudah terdaftar. Produk: ${product.name}.`);
+};
+
+// Barcode is free: open the existing create form prefilled with the scan (§3B).
+const handleBarcodeAvailable = async (barcode: string): Promise<void> => {
+  isScannerOpen.value = false;
+
+  try {
+    await navigateTo({
+      path: "/admin/master-data/products/create",
+      query: { barcode },
+    });
+  } catch {
+    notify.error("Gagal membuka halaman tambah produk. Silakan coba lagi.");
+  }
+};
 </script>
 
 <template>
@@ -204,10 +232,20 @@ const goToPage = (page: number): void => {
         </p>
       </div>
 
-      <BaseButton @click="navigateTo('/admin/master-data/products/create')">
-        <Plus class="h-4 w-4" />
-        Tambah Produk
-      </BaseButton>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <BaseButton
+          variant="secondary"
+          @click="isScannerOpen = true"
+        >
+          <ScanBarcode class="h-4 w-4" />
+          Scan Barcode
+        </BaseButton>
+
+        <BaseButton @click="navigateTo('/admin/master-data/products/create')">
+          <Plus class="h-4 w-4" />
+          Tambah Produk
+        </BaseButton>
+      </div>
     </section>
 
     <!-- List -->
@@ -468,6 +506,13 @@ const goToPage = (page: number): void => {
       confirm-label="Hapus Produk"
       :loading="isDeleting"
       @confirm="handleDelete"
+    />
+
+    <!-- Barcode scanner -->
+    <ProductBarcodeScannerModal
+      v-model="isScannerOpen"
+      @exists="handleBarcodeExists"
+      @available="handleBarcodeAvailable"
     />
   </div>
 </template>

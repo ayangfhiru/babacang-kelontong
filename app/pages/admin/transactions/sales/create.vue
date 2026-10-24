@@ -1,18 +1,225 @@
 <script setup lang="ts">
-import { Trash2, Plus, ArrowLeft } from "@lucide/vue";
+import { ArrowLeft, Plus, Trash2 } from "@lucide/vue";
 import type { PaginatedResponse, Product } from "~~/types";
+
 usePageTitle("Penjualan Baru");
-interface Line { productId: string; quantity: number; unitCost: number; discount: number; batchNumber: string; expiredAt: string }
+
+const LIST_ROUTE = "/admin/transactions/sales";
+
+interface Line {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+}
+
 const notify = useNotify();
-const saving = ref(false); const products = ref<Product[]>([]);
-const form = reactive({ date: new Date().toISOString().slice(0,10), notes: "", discount: 0 });
-const items = ref<Line[]>([{ productId: "", quantity: 1, unitCost: 0, discount: 0, batchNumber: "", expiredAt: "" }]);
-const subtotal = computed(() => items.value.reduce((sum, item) => sum + item.quantity * item.unitCost - item.discount, 0));
-const total = computed(() => Math.max(subtotal.value - form.discount, 0));
-const addItem = () => items.value.push({ productId: "", quantity: 1, unitCost: 0, discount: 0, batchNumber: "", expiredAt: "" });
-const removeItem = (index: number) => { if (items.value.length > 1) items.value.splice(index, 1); };
-const load = async () => { const [productResponse] = await Promise.all([$fetch<PaginatedResponse<Product>>("/api/products", { query: { page: 1, pageSize: 100, isActive: "true" } })]); products.value = productResponse.data; };
+const saving = ref(false);
+const products = ref<Product[]>([]);
+
+/** Local wall-clock value for <input type="datetime-local"> (no timezone shift). */
+const toLocalDateTimeValue = (date: Date): string => {
+  const pad = (value: number): string => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const form = reactive({
+  // The API expects an ISO datetime from <input type="datetime-local">.
+  date: toLocalDateTimeValue(new Date()),
+  notes: "",
+  discount: 0,
+  tax: 0,
+});
+
+const items = ref<Line[]>([
+  { productId: "", quantity: 1, unitPrice: 0, discount: 0 },
+]);
+
+const subtotal = computed(() =>
+  items.value.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice - item.discount,
+    0,
+  ),
+);
+
+const total = computed(() =>
+  Math.max(subtotal.value - Number(form.discount) + Number(form.tax), 0),
+);
+
+const addItem = (): void => {
+  items.value.push({ productId: "", quantity: 1, unitPrice: 0, discount: 0 });
+};
+
+const removeItem = (index: number): void => {
+  if (items.value.length > 1) items.value.splice(index, 1);
+};
+
+const productOptions = computed(() =>
+  products.value.map((product) => ({
+    value: product.id,
+    label: `${product.sku} — ${product.name}`,
+  })),
+);
+
+const load = async (): Promise<void> => {
+  const response = await $fetch<PaginatedResponse<Product>>("/api/products", {
+    query: { page: 1, pageSize: 100, isActive: "true" },
+  });
+  products.value = response.data;
+};
+
 await load();
-const submit = async () => { saving.value = true; try { await $fetch("/api/sales", { method: "POST", body: { ...form, discount: Number(form.discount), items: items.value.map((item) => ({ ...item, quantity: Number(item.quantity), unitPrice: Number(item.unitCost), discount: Number(item.discount) })) } }); notify.success("Draft pembelian berhasil dibuat."); await navigateTo("/admin/transactions/sales"); } catch (error) { notify.error(getApiErrorPayload(error).message); } finally { saving.value = false; } };
+
+// Prefill the selling price from the product master when a product is picked.
+watch(
+  () => items.value.map((item) => item.productId).join(","),
+  () => {
+    for (const item of items.value) {
+      if (item.unitPrice > 0) continue;
+      const product = products.value.find((entry) => entry.id === item.productId);
+      if (product) item.unitPrice = product.sellingPrice;
+    }
+  },
+);
+
+const submit = async (): Promise<void> => {
+  if (saving.value) return;
+  saving.value = true;
+
+  try {
+    await $fetch("/api/sales", {
+      method: "POST",
+      body: {
+        ...form,
+        discount: Number(form.discount),
+        tax: Number(form.tax),
+        items: items.value.map((item) => ({
+          productId: item.productId,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          discount: Number(item.discount),
+        })),
+      },
+    });
+    notify.success("Draft penjualan berhasil dibuat.");
+    await navigateTo(LIST_ROUTE);
+  } catch (error) {
+    notify.error(getApiErrorPayload(error).message);
+  } finally {
+    saving.value = false;
+  }
+};
 </script>
-<template><div><section class="flex items-center gap-4 pt-8 pb-7"><NuxtLink to="/admin/transactions/sales"><ArrowLeft class="h-5 w-5" /></NuxtLink><div><p class="text-[11px] font-semibold uppercase tracking-[.14em] text-brand">Transaksi</p><h2 class="mt-2 font-display text-3xl font-bold">Penjualan Baru</h2></div></section><form class="space-y-6" @submit.prevent="submit"><section class="grid gap-4 rounded-4xl border border-line/70 bg-surface p-6 shadow-card sm:grid-cols-3"><BaseSelect <BaseInput v-model="form.date" label="Tanggal" type="date" required /><BaseInput v-model="form.notes" label="Catatan" /></section><section class="overflow-x-auto rounded-4xl border border-line/70 bg-surface p-6 shadow-card"><div class="mb-4 flex items-center justify-between"><h3 class="font-semibold">Item Penjualan</h3><BaseButton type="button" variant="secondary" @click="addItem"><Plus class="h-4 w-4" /> Tambah Item</BaseButton></div><table class="w-full min-w-[900px] text-sm"><thead class="text-left text-muted"><tr><th class="p-2">Produk</th><th class="p-2">Qty</th><th class="p-2">Harga jual</th><th class="p-2">Diskon</th><th class="p-2">Batch</th><th class="p-2">Kedaluwarsa</th><th /></tr></thead><tbody><tr v-for="(item, index) in items" :key="index"><td class="p-2"><BaseSelect v-model="item.productId" :options="products.map(p => ({ value: p.id, label: `${p.sku} — ${p.name}` }))" /></td><td class="p-2"><BaseInput v-model="item.quantity" type="number" min="1" /></td><td class="p-2"><BaseInput v-model="item.unitCost" type="number" min="0" /></td><td class="p-2"><BaseInput v-model="item.discount" type="number" min="0" /></td><td class="p-2"><BaseInput v-model="item.batchNumber" /></td><td class="p-2"><BaseInput v-model="item.expiredAt" type="date" /></td><td class="p-2"><button type="button" class="text-coral" @click="removeItem(index)"><Trash2 class="h-4 w-4" /></button></td></tr></tbody></table></section><section class="flex flex-col items-end gap-3 rounded-4xl border border-line/70 bg-surface p-6 shadow-card"><div class="w-full max-w-xs"><BaseInput v-model="form.discount" label="Diskon transaksi" type="number" min="0" /><p class="mt-3 flex justify-between font-semibold"><span>Subtotal</span><span>Rp {{ subtotal.toLocaleString('id-ID') }}</span></p><p class="mt-2 flex justify-between text-lg font-bold"><span>Total</span><span>Rp {{ total.toLocaleString('id-ID') }}</span></p></div><BaseButton type="submit" :disabled="saving">{{ saving ? 'Menyimpan…' : 'Simpan Draft' }}</BaseButton></section></form></div></template>
+
+<template>
+  <div>
+    <section class="flex items-center gap-4 pt-8 pb-7">
+      <NuxtLink :to="LIST_ROUTE" aria-label="Kembali ke daftar penjualan">
+        <ArrowLeft class="h-5 w-5" />
+      </NuxtLink>
+      <div>
+        <p
+          class="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand"
+        >
+          Transaksi
+        </p>
+        <h2 class="mt-2 font-display text-3xl font-bold">Penjualan Baru</h2>
+        <p class="mt-2 text-sm text-muted">
+          Stok dialokasikan FIFO saat transaksi diposting.
+        </p>
+      </div>
+    </section>
+
+    <form class="space-y-6" @submit.prevent="submit">
+      <section
+        class="grid gap-4 rounded-4xl border border-line/70 bg-surface p-6 shadow-card sm:grid-cols-3"
+      >
+        <BaseInput
+          v-model="form.date"
+          label="Tanggal & Waktu"
+          type="datetime-local"
+          required
+        />
+        <BaseInput
+          v-model="form.discount"
+          label="Diskon (Rp)"
+          type="number"
+          min="0"
+        />
+        <BaseInput v-model="form.tax" label="Pajak (Rp)" type="number" min="0" />
+        <div class="sm:col-span-3">
+          <BaseInput v-model="form.notes" label="Catatan" />
+        </div>
+      </section>
+
+      <section
+        class="overflow-x-auto rounded-4xl border border-line/70 bg-surface p-6 shadow-card"
+      >
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="font-semibold">Item Penjualan</h3>
+          <BaseButton type="button" variant="secondary" @click="addItem">
+            <Plus class="h-4 w-4" />
+            Tambah Item
+          </BaseButton>
+        </div>
+
+        <table class="w-full min-w-[720px] text-sm">
+          <thead class="text-left text-muted">
+            <tr>
+              <th class="p-2">Produk</th>
+              <th class="p-2">Qty</th>
+              <th class="p-2">Harga jual</th>
+              <th class="p-2">Diskon</th>
+              <th class="p-2" />
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in items" :key="index">
+              <td class="p-2">
+                <BaseSelect v-model="item.productId" :options="productOptions" />
+              </td>
+              <td class="p-2">
+                <BaseInput v-model="item.quantity" type="number" min="1" />
+              </td>
+              <td class="p-2">
+                <BaseInput v-model="item.unitPrice" type="number" min="0" />
+              </td>
+              <td class="p-2">
+                <BaseInput v-model="item.discount" type="number" min="0" />
+              </td>
+              <td class="p-2">
+                <button
+                  type="button"
+                  class="text-coral"
+                  aria-label="Hapus item"
+                  @click="removeItem(index)"
+                >
+                  <Trash2 class="h-4 w-4" />
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section
+        class="flex flex-col items-end gap-3 rounded-4xl border border-line/70 bg-surface p-6 shadow-card"
+      >
+        <div class="w-full max-w-xs space-y-2">
+          <p class="flex justify-between text-sm">
+            <span class="text-muted">Subtotal</span>
+            <span class="font-mono font-semibold">
+              Rp {{ subtotal.toLocaleString("id-ID") }}
+            </span>
+          </p>
+          <p class="flex justify-between text-lg font-bold">
+            <span>Total</span>
+            <span class="font-mono">Rp {{ total.toLocaleString("id-ID") }}</span>
+          </p>
+        </div>
+
+        <BaseButton type="submit" :loading="saving">Simpan Draft</BaseButton>
+      </section>
+    </form>
+  </div>
+</template>

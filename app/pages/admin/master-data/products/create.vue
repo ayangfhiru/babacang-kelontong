@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft } from "@lucide/vue";
+import { ArrowLeft, ScanBarcode } from "@lucide/vue";
 import type {
   BrandOption,
   CategoryOption,
@@ -12,9 +12,15 @@ usePageTitle("Tambah Produk");
 
 const LIST_ROUTE = "/admin/master-data/products";
 
+const route = useRoute();
 const notify = useNotify();
 const isSubmitting = ref(false);
 const formErrors = ref<Record<string, string[]>>({});
+
+// Prefilled by the scanner flow (`?barcode=...`). Kept as a string so leading
+// zeros are never converted to a number.
+const scannedBarcode =
+  typeof route.query.barcode === "string" ? route.query.barcode : "";
 
 const { data: categoryData } = await useAsyncData(
   "admin-product-create-categories",
@@ -81,7 +87,18 @@ const handleSubmit = async (values: CreateProductInput): Promise<void> => {
       </p>
     </section>
 
+    <p
+      v-if="scannedBarcode"
+      class="mb-5 inline-flex items-center gap-2 rounded-2xl border border-brand/40 bg-brand-soft px-4 py-2.5 text-sm text-ink-2"
+    >
+      <ScanBarcode class="h-4 w-4 shrink-0 text-brand" />
+      Barcode
+      <span class="font-mono font-semibold text-ink">{{ scannedBarcode }}</span>
+      diisi otomatis dari hasil scan.
+    </p>
+
     <ProductForm
+      :initial-barcode="scannedBarcode"
       :category-options="categoryOptions"
       :brand-options="brandOptions"
       :unit-options="unitOptions"

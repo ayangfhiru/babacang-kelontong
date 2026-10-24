@@ -36,6 +36,7 @@ Use the following technologies when applicable:
 - Zod or an existing validation library for runtime validation when appropriate.
 - Lucide/vue for icon.
 - dayjs for datetime.
+- html5-qrcode for barcode scanner.
 
 Before introducing a new library, inspect `package.json` and reuse existing dependencies whenever possible.
 

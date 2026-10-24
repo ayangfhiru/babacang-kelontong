@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type {
+  BarcodeCheckResponse,
   CreateProductInput,
   PaginatedResponse,
   Product,
@@ -55,6 +56,13 @@ export const updateProductSchema = createProductFields
   .refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus diperbarui.",
   });
+
+/** Route param schema for `:barcode` (scanner input, kept as a string). */
+export const barcodeParamSchema = z
+  .string()
+  .trim()
+  .min(1, "Barcode wajib diisi.")
+  .max(64, "Barcode terlalu panjang.");
 
 // ---------------------------------------------------------------------------
 // Mapping
@@ -209,6 +217,34 @@ export const getProduct = async (id: string): Promise<Product> => {
   const record = await prisma.product.findUnique({ where: { id }, include: productInclude });
   if (!record) throw notFoundError("Produk");
   return mapProduct(record);
+};
+
+/**
+ * Barcode lookup used by the product scanner (§4 of PROMT.md).
+ * The barcode is normalized exactly like the create/update path so the query
+ * hits the unique index and matches what is stored in the database.
+ */
+export const checkBarcode = async (rawBarcode: string): Promise<BarcodeCheckResponse> => {
+  const barcode = normalizeCode(rawBarcode);
+
+  if (!barcode) {
+    throw apiError(400, "BAD_REQUEST", "Barcode tidak valid.", {
+      barcode: ["Barcode tidak valid."],
+    });
+  }
+
+  const product = await prisma.product.findFirst({
+    where: { barcode: { equals: barcode, mode: "insensitive" } },
+    select: { id: true, name: true, barcode: true },
+  });
+
+  if (!product) return { success: true, exists: false, data: null };
+
+  return {
+    success: true,
+    exists: true,
+    data: { id: product.id, name: product.name, barcode: product.barcode ?? barcode },
+  };
 };
 
 // ---------------------------------------------------------------------------
