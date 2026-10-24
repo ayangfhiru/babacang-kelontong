@@ -2,8 +2,12 @@
 // https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client"
-  output   = "./generated"
+  provider        = "prisma-client"
+  output          = "./generated"
+  // `join` load strategy: relasi dimuat lewat LATERAL JOIN tunggal alih-alih
+  // query per tabel yang dijalankan paralel pada satu koneksi transaksi
+  // (pemicu DeprecationWarning pg@8 "client.query() when already executing").
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -136,24 +140,88 @@ enum UserRole {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  name         String
-  passwordHash String   @map("password_hash")
-  role         UserRole @default(STAFF)
-  isActive     Boolean  @default(true) @map("is_active")
+  id               String   @id @default(uuid()) @db.Uuid
+  email            String   @unique
+  name             String
+  // Legacy credential column from the pre-Better-Auth era. Nullable so the
+  // Better Auth adapter (which stores passwords in `accounts`) can create
+  // users. Existing rows keep their value for reference; authentication must
+  // only read `accounts.password` (providerId "credential").
+  passwordHash     String?  @map("password_hash")
+  role             UserRole @default(STAFF)
+  isActive         Boolean  @default(true) @map("is_active")
+
+  // Better Auth core fields.
+  emailVerified    Boolean  @default(false) @map("email_verified")
+  image            String?
+  username         String?  @unique
+  displayUsername  String?  @map("display_username")
 
   purchases        Purchase[]
   sales            Sales[]
   returns          Return[]
   stockAdjustments StockAdjustment[]
   stockMovements   StockMovement[]
+  sessions         Session[]
+  accounts         Account[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([role])
   @@map("users")
+}
+
+/// Better Auth session (sliding expiry, refreshed on use).
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  token     String   @unique
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Better Auth credential/OAuth account. Credential passwords live here
+/// (`providerId = "credential"`, hash in `password`).
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id") @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+/// Better Auth one-time tokens (email verification, password reset, ...).
+model Verification {
+  id         String    @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime? @default(now()) @map("created_at")
+  updatedAt  DateTime? @updatedAt @map("updated_at")
+
+  @@map("verifications")
 }
 
 // ============================================================================
@@ -188,7 +256,9 @@ model StockBatch {
   id              String        @id @default(uuid()) @db.Uuid
   productId       String        @map("product_id") @db.Uuid
   product         Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
-  purchaseItemId  String?       @unique @map("purchase_item_id")
+  // `@db.Uuid` wajib: PK yang dirujuk bertipe uuid — tanpa ini, strategi load
+  // `join` menghasilkan SQL `text = uuid` yang ditolak PostgreSQL (42883).
+  purchaseItemId  String?       @unique @map("purchase_item_id") @db.Uuid
   purchaseItem    PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
   batchNumber     String?       @map("batch_number")
   receivedAt      DateTime      @map("received_at")

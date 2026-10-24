@@ -99,6 +99,7 @@ export default defineConfig(
         $fetch: "readonly",
         onMounted: "readonly",
         // Project auto-imports (app/composables, app/utils).
+        useAuth: "readonly",
         useTheme: "readonly",
         useNotify: "readonly",
         usePageTitle: "readonly",

@@ -7,7 +7,6 @@ const themeInitScript = `(function(){try{var s=localStorage.getItem("babacang-th
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
-  modules: ["nuxt-auth-utils"],
   css: ["~/assets/main.css"],
   runtimeConfig: {
     // Days before expiry when a batch starts showing as "segera kedaluwarsa".

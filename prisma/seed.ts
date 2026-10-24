@@ -1,15 +1,6 @@
 import "dotenv/config";
-import { randomBytes, scrypt as scryptCallback } from "node:crypto";
-import { promisify } from "node:util";
 import { prisma } from "../server/utils/db";
-
-const scrypt = promisify(scryptCallback);
-
-const hashPassword = async (password: string): Promise<string> => {
-  const salt = randomBytes(16).toString("hex");
-  const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
-  return `${salt}:${derivedKey.toString("hex")}`;
-};
+import { hashPassword } from "../server/utils/password";
 
 const seed = async (): Promise<void> => {
   await prisma.$transaction(async (tx) => {
@@ -113,20 +104,40 @@ const seed = async (): Promise<void> => {
         address: "Jakarta",
       },
     });
+    const password = await hashPassword("password");
     const admin = await tx.user.create({
       data: {
         email: "admin@example.com",
         name: "Administrator",
-        passwordHash: await hashPassword("password"),
+        username: "admin",
+        displayUsername: "admin",
+        passwordHash: password,
         role: "ADMIN",
+        // Better Auth credential row — password verification reads this.
+        accounts: {
+          create: {
+            accountId: "seed",
+            providerId: "credential",
+            password,
+          },
+        },
       },
     });
     const staff = await tx.user.create({
       data: {
         email: "staff@example.com",
         name: "Staff Toko",
-        passwordHash: await hashPassword("password"),
+        username: "staff",
+        displayUsername: "staff",
+        passwordHash: password,
         role: "STAFF",
+        accounts: {
+          create: {
+            accountId: "seed",
+            providerId: "credential",
+            password,
+          },
+        },
       },
     });
 
