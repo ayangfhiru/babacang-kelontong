@@ -50,7 +50,12 @@ const total = computed(() =>
 );
 
 const addItem = (): void => {
-  items.value.push({ productId: "", quantity: "1", unitPrice: "0", discount: "0" });
+  items.value.push({
+    productId: "",
+    quantity: "1",
+    unitPrice: "0",
+    discount: "0",
+  });
 };
 
 const removeItem = (index: number): void => {
@@ -79,7 +84,9 @@ watch(
   () => {
     for (const item of items.value) {
       if ((parseNonNegativeMoney(item.unitPrice) ?? 0) > 0) continue;
-      const product = products.value.find((entry) => entry.id === item.productId);
+      const product = products.value.find(
+        (entry) => entry.id === item.productId,
+      );
       if (product) item.unitPrice = String(product.sellingPrice);
     }
   },
@@ -150,7 +157,12 @@ const submit = async (): Promise<void> => {
           type="number"
           :min="0"
         />
-        <BaseInput v-model="form.tax" label="Pajak (Rp)" type="number" :min="0" />
+        <BaseInput
+          v-model="form.tax"
+          label="Pajak (Rp)"
+          type="number"
+          :min="0"
+        />
         <div class="sm:col-span-3">
           <BaseInput v-model="form.notes" label="Catatan" />
         </div>
@@ -180,7 +192,11 @@ const submit = async (): Promise<void> => {
           <tbody>
             <tr v-for="(item, index) in items" :key="index">
               <td class="p-2">
-                <BaseSelect v-model="item.productId" :options="productOptions" />
+                <BaseSelect
+                  class="w-[300px]"
+                  v-model="item.productId"
+                  :options="productOptions"
+                />
               </td>
               <td class="p-2">
                 <BaseInput v-model="item.quantity" type="number" :min="1" />
@@ -218,7 +234,9 @@ const submit = async (): Promise<void> => {
           </p>
           <p class="flex justify-between text-lg font-bold">
             <span>Total</span>
-            <span class="font-mono">Rp {{ total.toLocaleString("id-ID") }}</span>
+            <span class="font-mono"
+              >Rp {{ total.toLocaleString("id-ID") }}</span
+            >
           </p>
         </div>
 

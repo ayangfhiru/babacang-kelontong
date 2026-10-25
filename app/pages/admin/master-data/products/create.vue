@@ -24,17 +24,17 @@ const scannedBarcode =
 
 const { data: categoryData } = await useAsyncData(
   "admin-product-create-categories",
-  () => $fetch<CollectionResponse<CategoryOption>>("/api/categories/options"),
+  () => $fetch<CollectionResponse<CategoryOption>>("/api/options/categories"),
 );
 
 const { data: brandData } = await useAsyncData(
   "admin-product-create-brands",
-  () => $fetch<CollectionResponse<BrandOption>>("/api/brands/options"),
+  () => $fetch<CollectionResponse<BrandOption>>("/api/options/brands"),
 );
 
 const { data: unitData } = await useAsyncData(
   "admin-product-create-units",
-  () => $fetch<CollectionResponse<UnitOption>>("/api/units/options"),
+  () => $fetch<CollectionResponse<UnitOption>>("/api/options/units"),
 );
 
 const categoryOptions = computed(() => categoryData.value?.data ?? []);
@@ -75,10 +75,14 @@ const handleSubmit = async (values: CreateProductInput): Promise<void> => {
         Kembali ke daftar produk
       </NuxtLink>
 
-      <p class="mt-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+      <p
+        class="mt-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand"
+      >
         Master Data
       </p>
-      <h2 class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">
+      <h2
+        class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl"
+      >
         Tambah Produk
       </h2>
       <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted">

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ArrowLeft, Ban, Check, Trash2, TriangleAlert } from "@lucide/vue";
+import type { BadgeTone } from "~/components/ui/BaseBadge.vue";
+import { getApiErrorPayload } from "~/utils/api/error";
 import type {
   ApiErrorPayload,
   StockAdjustment,
   TransactionStatus,
 } from "~~/types";
-import type { BadgeTone } from "~/components/ui/BaseBadge.vue";
-import { getApiErrorPayload } from "~/utils/api/error";
 
 usePageTitle("Detail Penyesuaian Stok");
 
@@ -17,7 +17,11 @@ const notify = useNotify();
 
 const adjustmentId = computed(() => String(route.params.id));
 
-const { data: adjustment, error, refresh } = await useAsyncData(
+const {
+  data: adjustment,
+  error,
+  refresh,
+} = await useAsyncData(
   () => `stock-adjustment-${adjustmentId.value}`,
   () =>
     $fetch<StockAdjustment>(
@@ -66,10 +70,9 @@ const runAction = async (
       return;
     }
 
-    await $fetch(
-      `/api/stock-adjustments/${adjustmentId.value}/${action}`,
-      { method: "POST" },
-    );
+    await $fetch(`/api/stock-adjustments/${adjustmentId.value}/${action}`, {
+      method: "POST",
+    });
     notify.success(
       action === "post"
         ? "Penyesuaian stok berhasil diposting. Stok FIFO telah diperbarui."
@@ -109,7 +112,11 @@ const handleDelete = async (): Promise<void> => {
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <BaseButton v-if="adjustment.status === 'DRAFT'" :disabled="busy" @click="runAction('post')">
+        <BaseButton
+          v-if="adjustment.status === 'DRAFT'"
+          :disabled="busy"
+          @click="runAction('post')"
+        >
           <Check class="h-4 w-4" />
           Posting
         </BaseButton>
@@ -192,7 +199,11 @@ const handleDelete = async (): Promise<void> => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in adjustment.items" :key="item.id" class="border-t border-line/60">
+          <tr
+            v-for="item in adjustment.items"
+            :key="item.id"
+            class="border-t border-line/60"
+          >
             <td class="p-3 font-semibold">
               {{ item.product.name }}
               <span class="block text-xs font-normal text-muted">
@@ -244,7 +255,9 @@ const handleDelete = async (): Promise<void> => {
       Kembali ke daftar penyesuaian
     </NuxtLink>
 
-    <div class="mt-8 flex flex-col items-center gap-3 rounded-4xl border border-line/70 bg-surface p-16 text-center shadow-card">
+    <div
+      class="mt-8 flex flex-col items-center gap-3 rounded-4xl border border-line/70 bg-surface p-16 text-center shadow-card"
+    >
       <template v-if="errorMessage">
         <TriangleAlert class="h-10 w-10 text-coral" />
         <p class="font-semibold">{{ errorMessage.message }}</p>

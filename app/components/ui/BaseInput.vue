@@ -1,9 +1,24 @@
 <script setup lang="ts">
 interface Props {
-  modelValue?: string;
+  modelValue?: string | number;
   label?: string;
-  type?: "text" | "number" | "password" | "search" | "date" | "datetime-local" | "email";
-  inputmode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search";
+  type?:
+    | "text"
+    | "number"
+    | "password"
+    | "search"
+    | "date"
+    | "datetime-local"
+    | "email";
+  inputmode?:
+    | "none"
+    | "text"
+    | "tel"
+    | "url"
+    | "email"
+    | "numeric"
+    | "decimal"
+    | "search";
   placeholder?: string;
   error?: string;
   hint?: string;
@@ -53,7 +68,9 @@ const onInput = (event: Event): void => {
       :class="error ? 'border-coral' : 'border-line focus:border-brand/50'"
       @input="onInput"
     />
-    <p v-if="error" class="mt-1.5 text-xs font-medium text-coral">{{ error }}</p>
+    <p v-if="error" class="mt-1.5 text-xs font-medium text-coral">
+      {{ error }}
+    </p>
     <p v-else-if="hint" class="mt-1.5 text-xs text-muted">{{ hint }}</p>
   </div>
 </template>

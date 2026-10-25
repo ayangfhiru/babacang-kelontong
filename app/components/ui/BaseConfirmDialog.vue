@@ -40,17 +40,19 @@ const emit = defineEmits<{
       </div>
     </div>
 
-    <div class="flex justify-end gap-3 border-t border-line/70 px-6 py-5">
-      <BaseButton
-        variant="secondary"
-        :disabled="loading"
-        @click="emit('update:modelValue', false)"
-      >
-        {{ cancelLabel }}
-      </BaseButton>
-      <BaseButton variant="danger" :loading="loading" @click="emit('confirm')">
-        {{ confirmLabel }}
-      </BaseButton>
-    </div>
+    <template #footer>
+      <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <BaseButton
+          variant="secondary"
+          :disabled="loading"
+          @click="emit('update:modelValue', false)"
+        >
+          {{ cancelLabel }}
+        </BaseButton>
+        <BaseButton variant="danger" :loading="loading" @click="emit('confirm')">
+          {{ confirmLabel }}
+        </BaseButton>
+      </div>
+    </template>
   </BaseModal>
 </template>

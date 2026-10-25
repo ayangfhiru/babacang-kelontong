@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import {
+  ClipboardCheck,
   LayoutDashboard,
   Package,
-  ShoppingCart,
-  ShoppingBag,
-  RotateCcw,
-  ClipboardCheck,
-  Warehouse,
   PanelLeftClose,
   PanelLeftOpen,
+  RotateCcw,
   Ruler,
+  ShoppingBag,
+  ShoppingCart,
   Tag,
   Tags,
   Truck,
+  Warehouse,
 } from "@lucide/vue";
 import type { Component } from "vue";
 
@@ -44,20 +44,18 @@ const sections: NavSection[] = [
     items: [{ label: "Dashboard", to: "/dashboard", icon: LayoutDashboard }],
   },
   {
-    title: "Master Data",
-    items: [
-      { label: "Produk", to: "/admin/master-data/products", icon: Package },
-      { label: "Kategori", to: "/admin/master-data/categories", icon: Tags },
-      { label: "Merek", to: "/admin/master-data/brands", icon: Tag },
-      { label: "Unit", to: "/admin/master-data/units", icon: Ruler },
-      { label: "Supplier", to: "/admin/master-data/suppliers", icon: Truck },
-    ],
-  },
-  {
     title: "Transaksi",
     items: [
-      { label: "Pembelian", to: "/admin/transactions/purchases", icon: ShoppingBag },
-      { label: "Penjualan", to: "/admin/transactions/sales", icon: ShoppingCart },
+      {
+        label: "Pembelian",
+        to: "/admin/transactions/purchases",
+        icon: ShoppingBag,
+      },
+      {
+        label: "Penjualan",
+        to: "/admin/transactions/sales",
+        icon: ShoppingCart,
+      },
       { label: "Retur", to: "/admin/transactions/returns", icon: RotateCcw },
     ],
   },
@@ -65,7 +63,21 @@ const sections: NavSection[] = [
     title: "Inventori",
     items: [
       { label: "Stok", to: "/admin/inventory", icon: Warehouse },
-      { label: "Penyesuaian Stok", to: "/admin/inventory/adjustments", icon: ClipboardCheck },
+      {
+        label: "Penyesuaian Stok",
+        to: "/admin/inventory/adjustments",
+        icon: ClipboardCheck,
+      },
+    ],
+  },
+  {
+    title: "Master Data",
+    items: [
+      { label: "Produk", to: "/admin/master-data/products", icon: Package },
+      { label: "Kategori", to: "/admin/master-data/categories", icon: Tags },
+      { label: "Merek", to: "/admin/master-data/brands", icon: Tag },
+      { label: "Unit", to: "/admin/master-data/units", icon: Ruler },
+      { label: "Supplier", to: "/admin/master-data/suppliers", icon: Truck },
     ],
   },
 ];
@@ -77,7 +89,7 @@ const sections: NavSection[] = [
   >
     <!-- Brand -->
     <div
-      class="sidebar-brand flex h-[76px] shrink-0 items-center gap-3 border-b border-white/10 px-5"
+      class="sidebar-brand flex h-19 shrink-0 items-center gap-3 border-b border-white/10 px-5"
     >
       <div
         class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-mint font-display text-xl font-bold text-night"
@@ -115,7 +127,7 @@ const sections: NavSection[] = [
               ? 'bg-white/10 text-white'
               : 'text-white/65 hover:bg-white/10 hover:text-white'
           "
-          :title="collapsed ? item.label : null"
+          :title="collapsed ? item.label : undefined"
           @click="$emit('navigate')"
         >
           <span
@@ -163,7 +175,7 @@ const sections: NavSection[] = [
         </template>
         <template v-else>
           <PanelLeftClose class="h-4 w-4 shrink-0" />
-          <span>Ciutkan menu</span>
+          <span>Ciutkan Menu</span>
         </template>
       </button>
     </div>
