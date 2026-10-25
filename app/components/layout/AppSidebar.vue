@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  LayoutDashboard,
   Package,
   ShoppingCart,
   ShoppingBag,
@@ -38,6 +39,10 @@ defineEmits<{
 }>();
 
 const sections: NavSection[] = [
+  {
+    title: "Umum",
+    items: [{ label: "Dashboard", to: "/dashboard", icon: LayoutDashboard }],
+  },
   {
     title: "Master Data",
     items: [

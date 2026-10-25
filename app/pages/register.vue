@@ -3,14 +3,18 @@ import { reactive } from "vue";
 import { UserPlus } from "@lucide/vue";
 import type { ApiErrorPayload } from "~~/types";
 
+definePageMeta({ layout: "auth" });
+
 usePageTitle("Daftar");
 
 // Keep in sync with the server-side schema in server/api/auth/[...all].ts.
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.]+$/;
 
 const auth = useAuth();
+const notify = useNotify();
 
 const form = reactive({
+  name: "",
   username: "",
   email: "",
   password: "",
@@ -29,8 +33,15 @@ const clearErrors = (): void => {
 
 const validate = (): boolean => {
   clearErrors();
-  const username = form.username.trim();
 
+  const name = form.name.trim();
+  if (!name) {
+    clientErrors.name = "Nama wajib diisi.";
+  } else if (name.length < 2 || name.length > 50) {
+    clientErrors.name = "Nama harus 2–50 karakter.";
+  }
+
+  const username = form.username.trim();
   if (!username) {
     clientErrors.username = "Username wajib diisi.";
   } else if (username.length < 3 || username.length > 30) {
@@ -65,10 +76,9 @@ const applyServerErrors = (payload: ApiErrorPayload): void => {
     return;
   }
   for (const [field, messages] of Object.entries(payload.details)) {
-    const key = field === "_" ? "form" : field;
-    const target = key === "form" ? formError : serverErrors;
-    if (key === "form") formError.value = messages[0] ?? payload.message;
-    else target.value = messages[0] ?? payload.message;
+    const message = messages[0] ?? payload.message;
+    if (field === "_") formError.value = message;
+    else serverErrors[field] = message;
   }
 };
 
@@ -76,14 +86,18 @@ const handleSubmit = async (): Promise<void> => {
   if (!validate() || isBusy.value) return;
   isBusy.value = true;
 
-  const { error } = await auth.signUp.email({
-    // `name` is required by the client type but not part of the form: the
-    // server pre-check derives it from the username anyway.
-    name: form.username.trim(),
+  // Built as a variable so the form-only `confirmPassword` field rides along
+  // (excess-property checks only apply to object literals). It is consumed by
+  // the server pre-check in server/api/auth/[...all].ts and never forwarded
+  // to Better Auth itself.
+  const payload = {
+    name: form.name.trim(),
     username: form.username.trim(),
     email: form.email.trim(),
     password: form.password,
-  });
+    confirmPassword: form.confirmPassword,
+  };
+  const { error } = await auth.signUp.email(payload);
 
   if (error) {
     isBusy.value = false;
@@ -95,7 +109,7 @@ const handleSubmit = async (): Promise<void> => {
           message: "Pendaftaran gagal. Periksa data Anda lalu coba lagi.",
         },
       );
-    } else if (error.code === "too_many_requests") {
+    } else if (error.code?.toUpperCase() === "TOO_MANY_REQUESTS") {
       formError.value = "Terlalu banyak percobaan. Tunggu beberapa saat lalu coba lagi.";
     } else {
       formError.value = "Pendaftaran gagal. Silakan coba lagi.";
@@ -103,89 +117,101 @@ const handleSubmit = async (): Promise<void> => {
     return;
   }
 
-  // autoSignIn (default) makes this the first session; the global middleware
-  // bounces signed-in users away from /register on the next navigation.
-  await navigateTo("/admin/master-data/products");
+  // `autoSignIn: false` on the server means no session is created here — the
+  // user signs in manually from /login, where this toast stays visible
+  // because both pages share the auth layout's toast list (`useState`).
+  notify.success(
+    "Registrasi berhasil! Silakan login menggunakan akun yang telah dibuat.",
+  );
+  await navigateTo("/login");
 };
 </script>
 
 <template>
-  <main class="grid min-h-screen place-items-center bg-paper px-4 py-10">
-    <div class="w-full max-w-md">
-      <div class="mb-8 text-center">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-          Babacang Kelontong
-        </p>
-        <h1 class="mt-2 font-display text-2xl font-bold">Buat akun baru</h1>
-        <p class="mt-2 text-sm text-muted">
-          Akun baru otomatis berperan sebagai staf.
-        </p>
+  <main class="w-full max-w-md">
+    <div class="mb-8 text-center">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+        Babacang Kelontong
+      </p>
+      <h1 class="mt-2 font-display text-2xl font-bold">Buat akun baru</h1>
+      <p class="mt-2 text-sm text-muted">
+        Akun baru otomatis berperan sebagai staf.
+      </p>
+    </div>
+
+    <form
+      class="space-y-5 rounded-3xl border border-line/70 bg-surface p-6 shadow-sm"
+      novalidate
+      @submit.prevent="handleSubmit"
+    >
+      <div
+        v-if="formError"
+        role="alert"
+        class="rounded-2xl border border-coral/30 bg-coral/10 px-4 py-3 text-sm font-medium text-coral"
+      >
+        {{ formError }}
       </div>
 
-      <form
-        class="space-y-5 rounded-3xl border border-line/70 bg-surface p-6 shadow-sm"
-        novalidate
-        @submit.prevent="handleSubmit"
-      >
-        <div
-          v-if="formError"
-          role="alert"
-          class="rounded-2xl border border-coral/30 bg-coral/10 px-4 py-3 text-sm font-medium text-coral"
-        >
-          {{ formError }}
-        </div>
+      <BaseInput
+        v-model="form.name"
+        label="Nama Lengkap"
+        placeholder="contoh: Budi Santoso"
+        required
+        :error="clientErrors.name ?? serverErrors.name"
+        :disabled="isBusy"
+        :maxlength="50"
+      />
 
-        <BaseInput
-          v-model="form.username"
-          label="Username"
-          placeholder="contoh: budi.toko"
-          required
-          :error="clientErrors.username ?? serverErrors.username"
-          :disabled="isBusy"
-          :maxlength="30"
-        />
+      <BaseInput
+        v-model="form.username"
+        label="Username"
+        placeholder="contoh: budi.toko"
+        required
+        :error="clientErrors.username ?? serverErrors.username"
+        :disabled="isBusy"
+        :maxlength="30"
+      />
 
-        <BaseInput
-          v-model="form.email"
-          label="Email"
-          type="email"
-          placeholder="nama@example.com"
-          required
-          :error="clientErrors.email ?? serverErrors.email"
-          :disabled="isBusy"
-        />
+      <BaseInput
+        v-model="form.email"
+        label="Email"
+        type="email"
+        placeholder="nama@example.com"
+        required
+        :error="clientErrors.email ?? serverErrors.email"
+        :disabled="isBusy"
+      />
 
-        <BaseInput
-          v-model="form.password"
-          label="Password"
-          type="password"
-          hint="Minimal 8 karakter."
-          required
-          :error="clientErrors.password ?? serverErrors.password"
-          :disabled="isBusy"
-        />
+      <BaseInput
+        v-model="form.password"
+        label="Password"
+        type="password"
+        hint="Minimal 8 karakter."
+        required
+        :error="clientErrors.password ?? serverErrors.password"
+        :disabled="isBusy"
+      />
 
-        <BaseInput
-          v-model="form.confirmPassword"
-          label="Konfirmasi Password"
-          type="password"
-          required
-          :error="clientErrors.confirmPassword ?? serverErrors.confirmPassword"
-          :disabled="isBusy"
-        />
+      <BaseInput
+        v-model="form.confirmPassword"
+        label="Konfirmasi Password"
+        type="password"
+        required
+        :error="clientErrors.confirmPassword ?? serverErrors.confirmPassword"
+        :disabled="isBusy"
+      />
 
-        <BaseButton type="submit" block :loading="isBusy">
-          <UserPlus class="mr-2 h-4 w-4" />
-          Daftar
-        </BaseButton>
+      <BaseButton type="submit" block :loading="isBusy">
+        <UserPlus class="mr-2 h-4 w-4" />
+        Daftar
+      </BaseButton>
 
-        <p class="text-center text-sm text-muted">
-          Sudah punya akun?
-          <NuxtLink to="/login" class="font-semibold text-brand hover:underline">
-            Masuk di sini
-          </NuxtLink>
-        </p>
-      </form>
-    </div>
+      <p class="text-center text-sm text-muted">
+        Sudah punya akun?
+        <NuxtLink to="/login" class="font-semibold text-brand hover:underline">
+          Masuk di sini
+        </NuxtLink>
+      </p>
+    </form>
   </main>
 </template>

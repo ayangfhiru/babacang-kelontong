@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { readRawBody } from "h3";
 import { auth } from "../../utils/auth";
-import { apiError } from "../../utils/api";
+import { apiError, conflictError } from "../../utils/api";
+import { prisma } from "../../utils/db";
 import { parseWithSchema } from "../../utils/validation";
 
 // Mirrors the Better Auth username plugin defaults (3–30 chars, alphanumeric
@@ -10,6 +11,11 @@ const USERNAME_PATTERN = /^[a-zA-Z0-9_.]+$/;
 
 const signUpBodySchema = z
   .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, "Nama minimal 2 karakter.")
+      .max(50, "Nama maksimal 50 karakter."),
     username: z
       .string()
       .trim()
@@ -50,20 +56,39 @@ export default defineEventHandler(async (event) => {
   }
   const validated = parseWithSchema(signUpBodySchema, parsed);
 
-  // Explicit whitelist: only fields Better Auth's signup understands are
-  // forwarded (no `confirmPassword`, no client-supplied `role`/`name`).
+  // With `autoSignIn: false`, Better Auth intentionally answers an existing
+  // email with a generic 200 response (anti-enumeration), which would show a
+  // false "registration successful" toast. Uniqueness is therefore verified
+  // here — same server, same endpoint — before forwarding.
+  const normalizedEmail = validated.email.toLowerCase();
+  const [existingEmail, existingUsername] = await Promise.all([
+    prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true } }),
+    prisma.user.findUnique({ where: { username: validated.username }, select: { id: true } }),
+  ]);
+
+  if (existingEmail) {
+    throw conflictError(
+      "email",
+      "Email sudah terdaftar. Gunakan email lain atau silakan login.",
+    );
+  }
+  if (existingUsername) {
+    throw conflictError("username", "Username sudah digunakan. Pilih username lain.");
+  }
+
+  // Explicit whitelist: only fields validated above are forwarded to
+  // Better Auth (no `confirmPassword`, no client-supplied `role`).
   const body = {
+    name: validated.name,
     username: validated.username,
     email: validated.email,
     password: validated.password,
   };
 
-  // `name` is not part of the signup form (PROMT §4): default it from the
-  // username. The role stays server-owned via `additionalFields.input=false`.
   const forwardRequest = new Request(toWebRequest(event), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...body, name: body.username }),
+    body: JSON.stringify(body),
   });
 
   return auth.handler(forwardRequest);

@@ -1,28 +1,35 @@
+import { isSafeInternalPath } from "~/utils/navigation";
+
 /**
  * Global route guard:
- * - `/admin/**` requires a session (→ `/login?redirect=...`).
- * - `/login` and `/register` bounce already-signed-in users to the app.
+ * - `/admin/**` and `/dashboard` require a session (→ `/login?redirect=...`).
+ * - `/login` and `/register` bounce already-signed-in users to `/dashboard`.
  *
  * A single global middleware keeps the rule in one place instead of adding
- * `definePageMeta` to every admin page.
+ * `definePageMeta` to every protected page. The session is always fetched
+ * server-side here — a client-only check would be trivially bypassable.
  */
 export default defineNuxtRouteMiddleware(async (to) => {
   const isAuthPage = to.path === "/login" || to.path === "/register";
-  const isAdminArea = to.path.startsWith("/admin");
+  const isProtectedArea = to.path.startsWith("/admin") || to.path === "/dashboard";
 
-  if (!isAuthPage && !isAdminArea) return;
+  if (!isAuthPage && !isProtectedArea) return;
 
   const auth = useAuth();
-  const { data: session } = await auth.useSession(useFetch);
-  const signedIn = Boolean(session.value?.user);
+  // `getSession()` (not `useSession(useFetch)`) always performs a fresh
+  // request: on client-side navigations the composable variant can reuse the
+  // "no session" payload cached during SSR and would bounce a user who just
+  // signed in back to /login.
+  const { data: session } = await auth.getSession();
+  const signedIn = Boolean(session?.user);
 
-  if (isAdminArea && !signedIn) {
+  if (isProtectedArea && !signedIn) {
     return navigateTo({ path: "/login", query: { redirect: to.fullPath } });
   }
 
   if (isAuthPage && signedIn) {
-    const redirect = typeof to.query.redirect === "string" ? to.query.redirect : "";
+    const redirect = to.query.redirect;
     // Only honor same-origin relative paths to avoid open redirects.
-    return navigateTo(redirect.startsWith("/") ? redirect : "/admin/master-data/products");
+    return navigateTo(isSafeInternalPath(redirect) ? redirect : "/dashboard");
   }
 });
