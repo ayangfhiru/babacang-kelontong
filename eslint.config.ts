@@ -95,6 +95,7 @@ export default defineConfig(
         useSeoMeta: "readonly",
         useRoute: "readonly",
         useRouter: "readonly",
+        definePageMeta: "readonly",
         prerenderRoutes: "readonly",
         $fetch: "readonly",
         onMounted: "readonly",

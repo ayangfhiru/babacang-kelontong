@@ -26,6 +26,9 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    // Registration must NOT open a session: after signing up the user is
+    // redirected to `/login` to sign in with their own credentials.
+    autoSignIn: false,
     // Custom hasher compatible with the legacy `prisma/seed.ts` format so
     // pre-existing accounts keep working (see server/utils/password.ts).
     password: { hash: hashPassword, verify: verifyPassword },
