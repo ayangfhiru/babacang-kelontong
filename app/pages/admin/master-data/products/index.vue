@@ -90,19 +90,34 @@ const loadFailed = computed(() => Boolean(error.value));
 // Select options (relations)
 // ---------------------------------------------------------------------------
 
+// SSR fetches carry no browser cookies; forward the session cookie or
+// `requireSession` answers 401 and the filter options come back empty.
+const requestHeaders = import.meta.server
+  ? useRequestHeaders(["cookie"])
+  : undefined;
+
 const { data: categoryOptionsData } = await useAsyncData(
   "admin-product-category-options",
-  () => $fetch<CollectionResponse<CategoryOption>>("/api/options/categories"),
+  () =>
+    $fetch<CollectionResponse<CategoryOption>>("/api/options/categories", {
+      headers: requestHeaders,
+    }),
 );
 
 const { data: brandOptionsData } = await useAsyncData(
   "admin-product-brand-options",
-  () => $fetch<CollectionResponse<BrandOption>>("/api/options/brands"),
+  () =>
+    $fetch<CollectionResponse<BrandOption>>("/api/options/brands", {
+      headers: requestHeaders,
+    }),
 );
 
 const { data: unitOptionsData } = await useAsyncData(
   "admin-product-unit-options",
-  () => $fetch<CollectionResponse<UnitOption>>("/api/options/units"),
+  () =>
+    $fetch<CollectionResponse<UnitOption>>("/api/options/units", {
+      headers: requestHeaders,
+    }),
 );
 
 const categoryOptions = computed(() => categoryOptionsData.value?.data ?? []);

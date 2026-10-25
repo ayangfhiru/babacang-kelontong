@@ -1,327 +1,475 @@
-# TASK: Perbaikan Autentikasi Login, Registrasi, dan Analisis PostgreSQL SSL Warning
+# TASK: Perbaikan BaseSelect dan Optimalisasi UI Item Pembelian untuk Smartphone
 
-Lakukan analisis terhadap struktur proyek yang sedang berjalan sebelum mengubah kode. Fokus pada perbaikan halaman login, registrasi, alur autentikasi, notifikasi, redirect, serta analisis warning SSL PostgreSQL di terminal.
+Lakukan analisis dan implementasi perbaikan UI/UX pada seluruh halaman yang menggunakan `BaseSelect`, serta desain ulang bagian `Item Pembelian` pada halaman:
 
-Jangan membuat implementasi baru secara sembarangan. Gunakan struktur, komponen, konfigurasi, dan sistem autentikasi yang sudah tersedia di proyek.
+`pages/admin/transactions/purchases/create`
 
-## 1. Analisis Struktur Proyek
+Gunakan struktur folder, komponen, style, dan pola arsitektur yang sudah diterapkan pada proyek.
+
+Tujuan utama:
+
+1. Memastikan dropdown `BaseSelect` dapat digunakan dengan nyaman pada smartphone.
+2. Mengatasi dropdown yang terpotong atau tidak dapat di-scroll akibat `overflow-hidden` pada elemen parent.
+3. Membuat penambahan item pembelian lebih praktis untuk pengguna smartphone.
+4. Mempertahankan kenyamanan penggunaan pada desktop dan tablet.
+5. Mempertahankan integrasi dengan API, database, validasi, dan aturan bisnis yang sudah ada.
+
+Jangan hanya memberikan rekomendasi. Lakukan pemeriksaan kode, implementasikan perubahan, kemudian verifikasi hasilnya.
+
+---
+
+## A. ANALISIS AWAL
 
 Sebelum melakukan perubahan:
 
-1. Periksa struktur folder proyek Nuxt.js.
-2. Periksa implementasi Better Auth yang sudah digunakan.
-3. Periksa halaman login dan registrasi yang sudah ada.
-4. Periksa middleware autentikasi dan otorisasi.
-5. Periksa konfigurasi Prisma dan koneksi PostgreSQL.
-6. Periksa mekanisme notifikasi yang sudah digunakan, seperti toast atau notification component.
-7. Periksa halaman dashboard dan mekanisme redirect setelah login.
-8. Periksa konfigurasi environment pada `.env` dan `.env.example`.
+1. Baca `AGENTS.md` dan seluruh aturan proyek.
+2. Periksa implementasi `BaseSelect.vue`, termasuk versi atau implementasi Select2 yang saat ini digunakan.
+3. Cari seluruh halaman dan komponen yang menggunakan `BaseSelect`.
+4. Identifikasi penyebab dropdown tidak bisa di-scroll pada smartphone.
+5. Periksa struktur layout, modal, card, drawer, dan container yang menggunakan:
+   - `overflow-hidden`
+   - `overflow-auto`
+   - `overflow-y-auto`
+   - `overflow-clip`
+   - `position: relative`
+   - `position: absolute`
+   - `z-index`
+   - CSS transform yang memengaruhi stacking context
+6. Periksa apakah dropdown berada di dalam modal, drawer, form, tabel, atau container lain yang membatasi area tampilnya.
+7. Periksa implementasi halaman `pages/admin/transactions/purchases/create`.
+8. Identifikasi seluruh field item pembelian berdasarkan kode, validasi, API, Prisma schema, dan aturan bisnis yang sudah ada.
+9. Periksa bagaimana subtotal, total kuantitas, pajak, diskon, dan total pembelian dihitung saat ini, jika fitur tersebut memang tersedia.
+10. Periksa apakah proyek sudah memiliki komponen modal, toast, form, tombol, dan state-management yang bisa digunakan kembali.
 
-Identifikasi penyebab masalah berdasarkan implementasi aktual. Jangan langsung mengasumsikan bahwa masalah berasal dari satu file tertentu.
+Jangan menebak nama field atau membuat struktur data baru sebelum memeriksa implementasi yang ada.
 
-## 2. Buat Halaman Login Terpisah
+Hindari membuat duplikasi komponen apabila komponen yang dibutuhkan sudah tersedia.
 
-Buat halaman login khusus yang tidak berada di dalam layout dashboard.
+---
 
-Gunakan routing Nuxt.js yang sesuai, misalnya:
+## B. PERBAIKAN GLOBAL BASESELECT
 
-- `/login` untuk halaman login.
-- `/dashboard` untuk halaman dashboard setelah autentikasi berhasil.
+### 1. Masalah utama
 
-Ketentuan implementasi:
+Saat ini `BaseSelect` dapat digunakan dengan baik pada desktop dan tablet, tetapi dropdown bermasalah pada smartphone ketika daftar opsi panjang dan parent menggunakan `overflow-hidden`.
 
-- Halaman login harus menggunakan layout autentikasi tersendiri atau layout minimal tanpa sidebar dan navigasi dashboard.
-- Jangan menampilkan halaman login sebagai modal atau bagian dari halaman dashboard.
-- Pisahkan tanggung jawab halaman autentikasi dari halaman dashboard.
-- Gunakan komponen form yang sudah tersedia jika sesuai.
-- Gunakan TypeScript dengan tipe data yang eksplisit.
-- Terapkan validasi input email dan password.
-- Tampilkan pesan validasi yang mudah dipahami.
-- Tampilkan indikator loading ketika proses login sedang berlangsung.
-- Nonaktifkan tombol submit selama proses autentikasi berjalan untuk mencegah pengiriman berulang.
-- Tampilkan pesan kesalahan jika email atau password salah, akun tidak dapat digunakan, atau terjadi kegagalan jaringan.
-- Jangan menampilkan detail internal server atau informasi sensitif kepada pengguna.
+Perbaiki akar masalahnya agar tidak perlu membuat workaround berbeda pada setiap halaman.
 
-Pastikan halaman login responsif dan mengikuti desain antarmuka proyek yang sudah ada.
+### 2. Strategi implementasi
 
-## 3. Perbaiki Proses Login
+Evaluasi penggunaan Vue Teleport untuk merender dropdown di luar container yang membatasi overflow.
 
-Integrasikan halaman login dengan implementasi Better Auth yang sudah digunakan.
+Jika sesuai dengan implementasi komponen yang ada:
 
-Alur login yang diharapkan:
+- Gunakan `Teleport` ke `body` untuk dropdown yang perlu keluar dari batas container.
+- Pastikan dropdown tidak terpotong oleh parent dengan `overflow-hidden`.
+- Pertahankan hubungan antara input dan dropdown.
+- Hitung posisi dropdown berdasarkan posisi aktual input.
+- Sesuaikan posisi ketika halaman di-scroll atau ukuran viewport berubah.
+- Pastikan dropdown tetap berada di dalam viewport.
+- Jika ruang di bawah input tidak cukup, pertimbangkan menampilkan dropdown di atas input.
+- Pastikan dropdown tidak tertutup oleh modal, drawer, sidebar, atau elemen lain.
+- Kelola event listener dan observer dengan benar.
+- Bersihkan event listener saat komponen di-unmount.
+- Hindari manipulasi DOM yang tidak diperlukan.
 
-1. Pengguna membuka halaman `/login`.
-2. Pengguna memasukkan email dan password.
-3. Sistem memvalidasi input.
-4. Sistem menjalankan proses autentikasi menggunakan Better Auth.
-5. Jika autentikasi gagal, tampilkan notifikasi atau pesan kesalahan yang sesuai.
-6. Jika autentikasi berhasil, tampilkan notifikasi sukses.
-7. Setelah itu, arahkan pengguna ke `/dashboard`.
+Jangan langsung mengganti implementasi dengan native HTML `<select>` apabila hal tersebut menghilangkan fitur pencarian, Select2, styling, atau perilaku yang saat ini sudah digunakan.
 
-Contoh pesan notifikasi:
+Pilih solusi paling sesuai dengan teknologi yang sudah ada.
 
-- Sukses: "Login berhasil. Selamat datang kembali!"
-- Gagal: "Email atau password yang dimasukkan tidak valid."
-- Kesalahan jaringan: "Terjadi kesalahan koneksi. Silakan coba kembali."
+### 3. Perbaikan scroll dropdown
 
-Ketentuan tambahan:
+Dropdown harus memiliki batas tinggi yang mengikuti viewport.
 
-- Gunakan mekanisme session dan cookie yang sesuai dengan konfigurasi Better Auth.
-- Pastikan redirect dilakukan setelah hasil autentikasi berhasil dikonfirmasi.
-- Hindari redirect sebelum session benar-benar tersedia.
-- Gunakan mekanisme notifikasi yang sudah ada. Jika belum tersedia, implementasikan solusi sederhana yang konsisten dengan UI proyek.
-- Jangan membuat sistem autentikasi kedua jika Better Auth sudah tersedia.
-- Jangan menyimpan password dalam localStorage, sessionStorage, atau penyimpanan klien lainnya.
-- Jika pengguna yang sudah login membuka `/login`, arahkan ke `/dashboard` sesuai status session.
+Persyaratan:
 
-## 4. Buat Halaman Registrasi Terpisah
+- Gunakan `max-height` dinamis atau pendekatan lain yang sesuai.
+- Gunakan `overflow-y-auto` pada elemen daftar opsi.
+- Pastikan pengguna dapat melakukan scroll vertikal menggunakan sentuhan.
+- Gunakan `overscroll-behavior` secara tepat agar scroll dropdown tidak selalu diteruskan ke halaman di belakangnya.
+- Pastikan daftar opsi tetap dapat diakses ketika keyboard smartphone muncul.
+- Pastikan opsi terakhir tetap dapat dijangkau.
+- Jangan membuat dropdown lebih tinggi daripada ruang yang tersedia.
+- Jangan menyebabkan seluruh halaman ikut bergeser secara tidak terkendali ketika pengguna menggulir daftar opsi.
 
-Buat halaman registrasi pada route:
+Jika dropdown menggunakan pencarian, pastikan input pencarian tetap terlihat dan daftar opsi yang difilter dapat di-scroll.
 
-`/register`
+### 4. Kompatibilitas
 
-Halaman ini harus berdiri sendiri dan tidak menjadi bagian dari halaman dashboard.
+Pastikan:
 
-Ketentuan implementasi:
+- Dropdown dapat dibuka dan ditutup dengan benar.
+- Pemilihan opsi memperbarui nilai model.
+- `v-model` tetap berfungsi.
+- Opsi yang dipilih tetap ditampilkan dengan benar.
+- Fitur pencarian tetap berfungsi.
+- Loading state, empty state, dan error state tetap bekerja jika tersedia.
+- Navigasi keyboard dan aksesibilitas tetap terjaga.
+- Klik di luar dropdown menutup dropdown tanpa mengganggu interaksi yang sah.
+- Dropdown bekerja di dalam modal dan drawer.
+- Tidak ada konflik antar-`BaseSelect` jika terdapat beberapa instance pada satu halaman.
+- Tidak terjadi masalah saat form berada di dalam container yang memiliki scroll sendiri.
 
-- Gunakan layout autentikasi yang konsisten dengan halaman login.
-- Sediakan input nama jika skema pengguna dan implementasi Better Auth mendukungnya.
-- Sediakan input email dan password.
-- Tambahkan konfirmasi password jika sesuai dengan pola form yang digunakan.
-- Validasi format email.
-- Validasi password sesuai ketentuan Better Auth yang berlaku dalam proyek.
-- Pastikan password dan konfirmasi password sama jika konfirmasi password digunakan.
-- Tampilkan indikator loading ketika proses registrasi berjalan.
-- Tampilkan pesan kesalahan yang jelas apabila registrasi gagal.
-- Gunakan tipe data TypeScript yang eksplisit.
+Jangan menghapus `overflow-hidden` dari semua parent secara global hanya untuk memperbaiki dropdown.
 
-Periksa apakah Better Auth sudah menyediakan konfigurasi registrasi email dan password. Gunakan konfigurasi tersebut, bukan membuat endpoint autentikasi baru yang tidak diperlukan.
+Perubahan layout harus dilakukan hanya jika memang diperlukan dan tidak merusak tampilan komponen lainnya.
 
-## 5. Perbaiki Alur Registrasi Berhasil
+### 5. Audit seluruh penggunaan BaseSelect
 
-Alur registrasi yang diharapkan:
+Setelah memperbaiki komponen utama:
 
-1. Pengguna membuka halaman `/register`.
-2. Pengguna mengisi form registrasi.
-3. Sistem memvalidasi input.
-4. Sistem menjalankan registrasi melalui Better Auth.
-5. Jika registrasi gagal, tampilkan pesan kesalahan.
-6. Jika registrasi berhasil, tampilkan notifikasi sukses.
-7. Arahkan pengguna ke halaman `/login`.
+- Periksa seluruh halaman yang menggunakan `BaseSelect`.
+- Pastikan dropdown tidak terpotong pada berbagai struktur layout.
+- Periksa penggunaan pada halaman create, edit, filter, modal, dan drawer jika tersedia.
+- Perbaiki konfigurasi khusus hanya jika diperlukan.
+- Hindari menambahkan kode workaround berulang pada masing-masing halaman.
 
-Contoh notifikasi:
+Prioritaskan satu implementasi `BaseSelect` yang stabil dan dapat digunakan kembali.
 
-"Registrasi berhasil! Silakan login menggunakan akun yang telah dibuat."
+---
 
-Ketentuan penting:
+## C. REDESAIN BAGIAN ITEM PEMBELIAN
 
-- Setelah registrasi berhasil, pengguna harus diarahkan ke `/login`, bukan langsung ke dashboard.
-- Jangan menampilkan notifikasi sukses apabila proses registrasi gagal.
-- Jika sistem mewajibkan verifikasi email sebelum login, sesuaikan pesan dan alurnya dengan konfigurasi Better Auth.
-- Pastikan notifikasi sukses tetap dapat dilihat setelah navigasi dari `/register` ke `/login`.
+Halaman utama:
 
-Untuk mempertahankan notifikasi setelah perpindahan halaman, gunakan mekanisme yang sesuai dengan arsitektur proyek, misalnya state notifikasi bersama atau mekanisme flash notification. Hindari menggunakan penyimpanan browser secara persisten jika tidak diperlukan.
+`pages/admin/transactions/purchases/create`
 
-## 6. Navigasi Antarhalaman
+Buat pengalaman pengguna yang lebih praktis, terutama pada smartphone, tanpa menghilangkan kenyamanan desktop dan tablet.
 
-Tambahkan navigasi yang jelas:
+### 1. Pertahankan halaman transaksi utama
 
-Pada halaman login:
+Jangan memindahkan seluruh form transaksi pembelian ke dalam modal.
 
-- Tampilkan tautan "Belum punya akun? Daftar".
-- Tautan mengarah ke `/register`.
+Halaman utama tetap menjadi tempat untuk mengisi informasi transaksi dan meninjau seluruh item pembelian.
 
-Pada halaman registrasi:
+Pisahkan proses pengisian detail item ke dalam modal agar pengguna dapat menambahkan item satu per satu.
 
-- Tampilkan tautan "Sudah punya akun? Login".
-- Tautan mengarah ke `/login`.
+### 2. Desktop dan tablet
 
-Pastikan navigasi tersebut tidak mengarah kembali ke halaman autentikasi yang tertanam di dashboard.
+Pada layar yang memiliki ruang memadai:
 
-## 7. Periksa Middleware dan Proteksi Route
+- Pertahankan struktur halaman dan header yang sudah ada.
+- Tampilkan bagian `Item Pembelian` sebagai section tersendiri.
+- Tampilkan jumlah item yang sudah ditambahkan.
+- Sediakan tombol `+ Tambah Item`.
+- Tampilkan item dalam tabel apabila lebar viewport mencukupi.
+- Pertahankan informasi penting seperti produk, kuantitas, harga beli, dan subtotal.
+- Sesuaikan kolom dengan field yang benar-benar tersedia pada aplikasi.
+- Sediakan aksi edit dan hapus untuk setiap item.
+- Pastikan tabel tidak menyebabkan seluruh halaman melebar tanpa batas.
 
-Audit middleware autentikasi yang sudah ada.
+Gunakan modal berukuran proporsional untuk menambahkan atau mengedit item.
 
-Ketentuan:
+Jangan memaksakan modal layar penuh pada semua ukuran layar jika dialog biasa lebih nyaman digunakan pada desktop.
 
-- Halaman `/dashboard` hanya dapat diakses oleh pengguna yang sudah terautentikasi.
-- Pengguna yang belum login dan membuka `/dashboard` harus diarahkan ke `/login`.
-- Pengguna yang sudah login dan membuka `/login` atau `/register` diarahkan ke `/dashboard`, jika sesuai dengan alur autentikasi proyek.
-- Jangan mengandalkan pemeriksaan di sisi klien saja untuk melindungi API atau operasi sensitif.
-- Pastikan endpoint server memverifikasi session dan hak akses pengguna sesuai kebutuhan.
-- Jangan mengubah mekanisme otorisasi yang sudah benar tanpa alasan teknis yang jelas.
+### 3. Smartphone
 
-Gunakan API dan pola session Better Auth yang sesuai dengan versi dependensi proyek. Jangan menyalin implementasi dari versi dokumentasi yang berbeda tanpa memeriksa kompatibilitasnya.
+Pada layar kecil, gunakan layout satu kolom.
 
-## 8. Analisis Warning PostgreSQL SSL
+Bagian `Item Pembelian` harus menggunakan daftar kartu, bukan tabel dengan banyak kolom yang memaksa pengguna melakukan scroll horizontal.
 
-Di terminal terdapat warning berikut:
+Setiap kartu item menampilkan informasi utama yang mudah dipindai, seperti:
 
-`Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.`
+- Nama produk.
+- SKU atau kode produk jika tersedia.
+- Kuantitas.
+- Satuan.
+- Harga beli per unit.
+- Subtotal item.
+- Informasi batch atau kedaluwarsa jika memang relevan dengan implementasi saat ini.
+- Tombol edit.
+- Tombol hapus.
 
-Warning tersebut menjelaskan bahwa mode SSL tertentu pada package `pg-connection-string` saat ini diperlakukan sebagai alias `verify-full`.
+Jangan memaksakan seluruh informasi ke satu baris.
 
-Pada versi mayor mendatang, yaitu `pg-connection-string` v3.0.0 dan `pg` v9.0.0, mode tersebut akan mengikuti semantik standar libpq yang berbeda.
+Gunakan susunan vertikal dengan label dan nilai yang jelas.
 
-Lakukan investigasi dengan langkah berikut.
+Nama produk yang panjang harus dapat membungkus baris tanpa merusak layout.
 
-### A. Temukan sumber konfigurasi SSL
+Tombol aksi harus mudah disentuh dan tidak saling berdekatan.
 
-Periksa:
+Hindari scroll horizontal pada kartu.
 
-- `DATABASE_URL` pada `.env`.
-- `DATABASE_URL` pada `.env.example`.
-- Konfigurasi Prisma.
-- Konfigurasi koneksi PostgreSQL.
-- Penggunaan package `pg` dan `pg-connection-string`.
-- Versi dependensi yang terpasang.
-- Apakah koneksi database menggunakan PostgreSQL langsung atau connection pooler, misalnya Supabase Pooler.
+### 4. Modal tambah dan edit item
 
-Cari parameter seperti:
+Buat alur penambahan item menggunakan modal yang responsif.
 
-- `sslmode=prefer`
-- `sslmode=require`
-- `sslmode=verify-ca`
+Pada smartphone:
 
-Telusuri konfigurasi yang benar-benar digunakan ketika aplikasi berjalan. Jangan hanya memeriksa `.env.example`.
+- Modal memenuhi viewport atau menggunakan pola full-screen sheet yang sesuai.
+- Gunakan area form yang dapat di-scroll secara vertikal.
+- Pertimbangkan safe area perangkat.
+- Pastikan tombol utama tidak tertutup keyboard virtual.
+- Sediakan header yang jelas dengan judul `Tambah Item Pembelian` atau `Edit Item Pembelian`.
+- Sediakan tombol kembali atau tutup.
+- Tampilkan validasi dekat dengan field terkait.
+- Hindari modal bertingkat yang tidak diperlukan.
 
-### B. Identifikasi penyebab sebenarnya
+Pada desktop dan tablet:
 
-Tentukan:
+- Gunakan modal dengan lebar dan tinggi yang proporsional.
+- Jika konten lebih tinggi daripada viewport, scroll hanya area konten modal.
+- Pertahankan header dan footer modal agar aksi utama tetap mudah ditemukan jika memungkinkan.
 
-1. File atau konfigurasi yang memicu warning.
-2. Package yang mengeluarkan warning.
-3. Versi package yang terpasang.
-4. Apakah warning berasal dari konfigurasi Prisma, driver PostgreSQL, atau dependency lain.
-5. Apakah koneksi menggunakan Supabase, PostgreSQL lokal, atau layanan lain.
-6. Apakah warning tersebut hanya berkaitan dengan perubahan semantik SSL di versi mendatang atau terdapat masalah konfigurasi lain yang perlu diperbaiki.
+Gunakan komponen modal proyek yang sudah tersedia jika sesuai.
 
-Gunakan pencarian kode, pemeriksaan dependency tree, dan stack trace jika diperlukan.
+Jangan membuat komponen modal baru apabila komponen yang ada sudah mendukung kebutuhan ini.
 
-Jangan langsung menyimpulkan bahwa koneksi database gagal. Warning ini tidak otomatis berarti koneksi gagal.
+### 5. Field form item
 
-### C. Tentukan perbaikan berdasarkan kebutuhan koneksi
+Gunakan field yang benar-benar diperlukan berdasarkan implementasi pembelian saat ini.
 
-Ada dua alternatif yang disebutkan dalam warning.
+Periksa apakah form membutuhkan:
 
-**Alternatif 1 — Mempertahankan perilaku SSL saat ini**
+- Produk.
+- Kuantitas.
+- Satuan.
+- Harga beli.
+- Diskon.
+- Batch atau tanggal kedaluwarsa.
+- Field lain yang sudah digunakan dalam skema database.
 
-Jika konfigurasi dan provider database mendukungnya, pertimbangkan penggunaan:
+Jangan menambahkan field bisnis baru hanya karena terlihat berguna.
 
-`sslmode=verify-full`
+Untuk pemilihan produk, gunakan `BaseSelect` yang sudah diperbaiki.
 
-Mode ini mempertahankan perilaku verifikasi penuh, termasuk verifikasi sertifikat dan identitas host sesuai konfigurasi TLS.
+Jika data produk yang dipilih memengaruhi satuan, harga, atau informasi lainnya, pertahankan atau perbaiki perilaku otomatis yang sudah ada.
 
-**Alternatif 2 — Menggunakan semantik libpq**
+Pastikan tipe input sesuai dengan data yang diharapkan, khususnya input numerik dan tanggal.
 
-Jika memang dibutuhkan kompatibilitas dengan semantik libpq, evaluasi kombinasi:
+Jangan mengandalkan `placeholder` sebagai satu-satunya label input.
 
-`uselibpqcompat=true&sslmode=require`
+---
 
-Namun, jangan menerapkan alternatif ini secara otomatis. Pada semantik libpq, `require` tidak selalu memberikan verifikasi identitas server seperti `verify-full`.
+## D. STATE SEMENTARA ITEM PEMBELIAN
 
-Prioritaskan konfigurasi yang sesuai dengan provider database, versi driver, dan kebutuhan keamanan aplikasi.
+Ini merupakan bagian penting dari implementasi.
 
-Jangan menurunkan keamanan koneksi hanya untuk menghilangkan warning.
+Item yang ditambahkan belum boleh langsung disimpan secara permanen ke database.
 
-### D. Jika menggunakan Supabase
+### 1. Alur tambah item
 
-Jika proyek menggunakan Supabase PostgreSQL, periksa apakah koneksi menggunakan:
+Ketika pengguna membuka modal dan mengisi form:
 
-- Direct connection.
-- Session pooler.
-- Transaction pooler.
+1. Form menggunakan state sementara untuk data item yang sedang diedit.
+2. Validasi dilakukan sebelum item dimasukkan ke daftar.
+3. Ketika pengguna menekan `Simpan Item`, validasi dijalankan.
+4. Jika validasi berhasil, data item dimasukkan atau diperbarui di state daftar item pembelian.
+5. Modal ditutup.
+6. Ringkasan item, jumlah kuantitas, dan subtotal diperbarui.
+7. Pengguna dapat menekan `+ Tambah Item` untuk menambahkan item lainnya.
 
-Sesuaikan rekomendasi dengan jenis koneksi yang benar-benar digunakan.
+Gunakan state management yang konsisten dengan pola Vue/Nuxt yang digunakan proyek.
 
-Jangan mengubah host, port, username, password, atau metode pooling tanpa alasan yang jelas.
+Jangan mengubah objek form secara tidak sengaja ketika pengguna membuka atau membatalkan proses edit.
 
-Jika perubahan parameter SSL diperlukan, pertahankan parameter koneksi lainnya.
+### 2. Alur edit item
 
-Jangan menuliskan nilai rahasia dari `.env` ke log, laporan, atau output terminal yang ditampilkan kepada pengguna.
+Ketika pengguna memilih edit:
 
-### E. Periksa kompatibilitas Prisma dan driver
+- Buka modal dengan data item yang dipilih.
+- Salin data item ke state form sementara.
+- Jangan langsung mengubah item asli saat pengguna mengetik.
+- Ketika pengguna menekan `Simpan Item`, validasi dan perbarui item terkait.
+- Ketika pengguna membatalkan, pertahankan data item asli.
+- Jangan menambahkan item duplikat hanya karena pengguna mengedit item yang sudah ada.
 
-Pastikan perubahan konfigurasi sesuai dengan versi Prisma dan driver PostgreSQL yang digunakan.
+Gunakan identitas sementara yang stabil untuk membedakan item, bukan mengandalkan posisi indeks array saja jika perubahan urutan atau penghapusan dapat terjadi.
 
-Jangan memperbarui seluruh dependency ke versi terbaru hanya untuk menghilangkan warning.
+### 3. Alur hapus item
 
-Jika perubahan versi diperlukan:
+Ketika pengguna menghapus item:
 
-1. Jelaskan alasan teknisnya.
-2. Periksa kompatibilitas versi.
-3. Hindari perubahan mayor yang berisiko merusak aplikasi.
-4. Pastikan konfigurasi database masih sesuai dengan dokumentasi versi yang digunakan.
+- Hapus item dari state sementara.
+- Perbarui jumlah item dan ringkasan transaksi.
+- Jika pola UI proyek menggunakan dialog konfirmasi untuk tindakan destruktif, gunakan pola yang sama.
+- Jangan memanggil API penghapusan detail transaksi untuk item yang belum pernah disimpan ke database.
 
-## 9. Pengujian Setelah Perbaikan
+### 4. Perhitungan otomatis
 
-Jalankan pemeriksaan yang relevan dengan proyek.
+Pastikan perhitungan berikut menggunakan logika bisnis yang sudah diterapkan:
 
-Minimal lakukan pengujian berikut:
+- Subtotal item.
+- Total kuantitas.
+- Total seluruh item.
+- Diskon dan pajak apabila tersedia.
+- Total akhir pembelian.
 
-### Login
+Hindari duplikasi rumus pada beberapa komponen.
 
-- Login menggunakan kredensial yang valid.
-- Login menggunakan password yang salah.
-- Login menggunakan email dengan format tidak valid.
-- Pastikan notifikasi sukses muncul.
-- Pastikan redirect menuju `/dashboard`.
-- Pastikan session tersedia setelah login.
-- Pastikan pengguna yang belum login tidak dapat mengakses dashboard.
+Gunakan helper atau computed state yang sesuai.
 
-### Registrasi
+Pastikan perubahan kuantitas, harga, diskon, atau penghapusan item memperbarui ringkasan dengan benar.
 
-- Registrasi dengan data valid.
-- Registrasi menggunakan email yang sudah terdaftar.
-- Registrasi dengan format email tidak valid.
-- Registrasi dengan password yang tidak memenuhi persyaratan.
-- Registrasi dengan password dan konfirmasi password yang berbeda, jika konfirmasi password digunakan.
-- Pastikan notifikasi sukses muncul setelah registrasi berhasil.
-- Pastikan redirect menuju `/login`.
-- Pastikan notifikasi sukses tetap tampil setelah redirect.
+Tangani nilai kosong dan input numerik secara aman.
 
-### PostgreSQL
+Jangan sampai `Number("")` menghasilkan nilai yang membuat validasi keliru.
 
-- Pastikan aplikasi tetap dapat terhubung ke database.
-- Pastikan operasi database yang diperlukan tetap berfungsi.
-- Periksa apakah warning SSL masih muncul setelah perubahan.
-- Jika warning tetap muncul, telusuri apakah terdapat konfigurasi atau dependency lain yang masih memicunya.
-- Jangan menyatakan warning telah diperbaiki jika belum diverifikasi melalui pengujian.
+### 5. Simpan transaksi utama
 
-## 10. Standar Kode dan Struktur Proyek
+Ketika pengguna menekan tombol simpan transaksi pembelian:
 
-Ikuti aturan berikut selama implementasi:
+- Validasi informasi utama transaksi.
+- Validasi seluruh item.
+- Pastikan minimal satu item tersedia jika aturan bisnis mengharuskannya.
+- Kirim seluruh item dan informasi transaksi melalui mekanisme API yang sudah digunakan proyek.
+- Ikuti aturan backend mengenai transaksi database, stok, dan batch pembelian.
+- Tampilkan loading state selama penyimpanan.
+- Cegah pengiriman berulang ketika proses masih berjalan.
+- Tampilkan notifikasi keberhasilan atau kegagalan.
+- Arahkan pengguna ke halaman yang sesuai dengan pola aplikasi setelah transaksi berhasil.
 
-- Gunakan Nuxt.js, Vue, TypeScript, dan Better Auth yang sudah tersedia.
-- Gunakan arrow function untuk fungsi yang dibuat.
-- Hindari deklarasi fungsi konvensional jika tidak diperlukan.
-- Gunakan tipe data eksplisit.
-- Pisahkan deklarasi `interface` dan `type` ke file khusus sesuai struktur proyek.
-- Gunakan `index.ts` pada folder yang memerlukan barrel exports.
-- Gunakan alias `~` atau alias proyek yang sudah dikonfigurasi.
-- Tempatkan helper yang dapat digunakan ulang di folder yang sesuai.
-- Gunakan komponen dan pola desain yang sudah ada.
-- Hindari duplikasi kode autentikasi.
-- Jangan menghapus file atau komponen yang masih digunakan.
-- Jangan mengubah skema database jika tidak diperlukan oleh perbaikan ini.
-- Jangan menambahkan dependency baru jika fitur yang diperlukan sudah tersedia.
-- Jangan mengubah konfigurasi production secara sembarangan.
+Jangan membuat API atau mengubah kontrak payload tanpa memeriksa implementasi backend terlebih dahulu.
 
-## 11. Laporan Hasil Implementasi
+Jika API yang ada belum mendukung payload seluruh item dalam satu transaksi, identifikasi kebutuhan tersebut dan sesuaikan secara konsisten dengan validasi serta transaksi database yang benar.
 
-Setelah menyelesaikan pekerjaan, berikan laporan yang mencakup:
+Jangan mengirim item yang belum dikonfirmasi oleh pengguna.
 
-1. Penyebab halaman login dan registrasi sebelumnya tidak sesuai.
-2. Daftar file yang dibuat atau diubah.
-3. Perubahan alur login dan registrasi.
-4. Mekanisme notifikasi dan redirect yang digunakan.
-5. Perubahan middleware atau proteksi route.
-6. Penyebab warning PostgreSQL SSL berdasarkan hasil investigasi.
-7. File dan parameter konfigurasi SSL yang diperbaiki, jika memang diperlukan.
-8. Alasan teknis pemilihan konfigurasi SSL.
-9. Hasil pemeriksaan TypeScript, lint, build, dan pengujian yang benar-benar dijalankan.
-10. Masalah yang masih tersisa, jika ada.
+---
 
-Jangan hanya memberikan rekomendasi atau contoh kode. Implementasikan perbaikan pada proyek yang sedang dibuka.
+## E. RINGKASAN DAN TOTAL TRANSAKSI
 
-**Prioritas utama:** autentikasi harus berfungsi dengan benar, halaman login dan registrasi harus terpisah dari dashboard, notifikasi harus tampil pada waktu yang tepat, redirect harus sesuai alur, dan koneksi PostgreSQL harus tetap aman.
+Buat ringkasan yang mudah dibaca pada halaman pembelian.
+
+Informasi yang dapat ditampilkan jika sesuai dengan implementasi yang ada:
+
+- Jumlah item.
+- Total kuantitas.
+- Subtotal.
+- Diskon.
+- Pajak.
+- Total akhir.
+
+Pada smartphone:
+
+- Gunakan layout vertikal.
+- Tampilkan total akhir dengan penekanan visual yang jelas.
+- Hindari ringkasan yang menutupi kartu item.
+- Jika menggunakan sticky footer, pastikan konten tidak tertutup dan area safe area perangkat diperhitungkan.
+- Tombol simpan transaksi harus mudah ditemukan dan dijangkau.
+
+Pada desktop dan tablet:
+
+- Pertahankan susunan ringkasan yang sesuai dengan desain aplikasi.
+- Jangan mengubah perhitungan bisnis yang sudah berjalan.
+
+Pastikan nilai ringkasan dihitung dari state item yang sedang aktif.
+
+---
+
+## F. RESPONSIVE DESIGN DAN AKSESIBILITAS
+
+Uji implementasi pada beberapa lebar viewport:
+
+- Smartphone kecil: 320–375 px.
+- Smartphone umum: 390–430 px.
+- Tablet: sekitar 768 px.
+- Desktop: 1024 px ke atas.
+
+Angka tersebut merupakan target pengujian, bukan alasan untuk menambahkan breakpoint secara berlebihan.
+
+Gunakan breakpoint Tailwind CSS yang sudah menjadi standar proyek.
+
+Pastikan:
+
+- Tidak ada elemen yang keluar dari viewport.
+- Tidak ada scroll horizontal yang tidak diperlukan.
+- Form menggunakan satu kolom pada smartphone.
+- Teks panjang tidak merusak layout.
+- Dropdown `BaseSelect` dapat di-scroll.
+- Modal dapat di-scroll ketika kontennya panjang.
+- Tombol tidak tertutup keyboard virtual.
+- Tombol memiliki area sentuh yang memadai, idealnya sekitar 44 × 44 CSS pixel.
+- Focus state tetap terlihat.
+- Label dan pesan error dapat dibaca.
+- Pengguna dapat membedakan tombol simpan, batal, edit, dan hapus.
+- Tampilan desktop dan tablet yang sudah baik tidak mengalami regresi.
+
+Jangan menggunakan `overflow-hidden` pada container form atau modal tanpa memahami dampaknya terhadap interaksi dan scroll.
+
+---
+
+## G. STANDAR KODE PROYEK
+
+Ikuti ketentuan berikut:
+
+1. Gunakan Vue 3, Nuxt.js, TypeScript, dan Tailwind CSS sesuai implementasi yang sudah ada.
+2. Gunakan arrow function untuk fungsi baru.
+3. Letakkan deklarasi `interface` dan `type` pada folder tipe terpisah sesuai standar proyek.
+4. Pertahankan penggunaan alias `~` dan struktur export `index.ts` sesuai `AGENTS.md`.
+5. Gunakan komponen bersama jika memang sudah tersedia.
+6. Jangan menggunakan `any` untuk mengatasi masalah tipe.
+7. Hindari duplikasi logika perhitungan.
+8. Hindari menambahkan dependensi baru jika solusi dapat diterapkan dengan dependensi yang sudah ada.
+9. Jangan mengubah struktur database jika perubahan tersebut tidak diperlukan.
+10. Jika perubahan API atau database memang diperlukan, jelaskan alasannya dan sesuaikan seluruh implementasi terkait.
+11. Pertahankan nama field, format payload, dan aturan validasi yang kompatibel dengan backend.
+12. Jangan menghapus fitur yang sudah berjalan hanya untuk menyederhanakan UI.
+
+---
+
+## H. PENGUJIAN DAN VERIFIKASI
+
+Setelah implementasi:
+
+### Pengujian BaseSelect
+
+- Buka dropdown pada smartphone.
+- Scroll daftar opsi yang panjang.
+- Pilih opsi paling bawah.
+- Uji pencarian jika tersedia.
+- Uji dropdown di dalam modal.
+- Uji dropdown di dalam container `overflow-hidden`.
+- Uji ketika halaman digulir.
+- Uji ketika keyboard virtual muncul.
+- Pastikan dropdown tidak terpotong dan tidak tertutup elemen lain.
+- Periksa halaman lain yang menggunakan komponen ini.
+
+### Pengujian pembelian
+
+- Buka halaman create purchase.
+- Tambahkan satu item.
+- Tambahkan beberapa item.
+- Edit item yang sudah ditambahkan.
+- Batalkan edit dan pastikan data awal tidak berubah.
+- Hapus item.
+- Pastikan subtotal dan total diperbarui.
+- Coba simpan item dengan input tidak valid.
+- Pastikan item belum disimpan ke database hanya karena tombol `Simpan Item` ditekan.
+- Simpan transaksi utama dan pastikan payload sesuai kontrak API.
+- Uji respons ketika API gagal.
+- Pastikan pengguna tidak kehilangan data form akibat interaksi yang tidak disengaja.
+
+### Pengujian teknis
+
+Jalankan pemeriksaan yang relevan dan tersedia di proyek, seperti:
+
+- TypeScript atau `vue-tsc`.
+- ESLint.
+- Unit test jika tersedia.
+- Build Nuxt.
+
+Jangan mengklaim pemeriksaan berhasil jika perintahnya belum dijalankan.
+
+Jika ditemukan error, perbaiki error yang disebabkan perubahan ini dan jelaskan jika terdapat error lama yang tidak berkaitan.
+
+---
+
+## I. OUTPUT YANG DIHARAPKAN
+
+Setelah selesai, berikan ringkasan:
+
+1. Penyebab utama masalah scroll `BaseSelect`.
+2. Solusi teknis yang diterapkan.
+3. Daftar halaman atau komponen yang diperbaiki.
+4. Perubahan UX pada bagian `Item Pembelian`.
+5. Cara state sementara item dikelola.
+6. Perubahan API atau database jika memang diperlukan.
+7. Hasil pemeriksaan TypeScript, lint, test, dan build.
+8. Masalah yang masih belum terselesaikan, jika ada.
+
+Prioritaskan solusi yang dapat digunakan kembali, mudah dirawat, dan nyaman pada smartphone.
+
+Jangan hanya mengubah tampilan tanpa memperbaiki akar masalah interaksi.
+
+Jangan merombak keseluruhan aplikasi di luar ruang lingkup tugas ini.
