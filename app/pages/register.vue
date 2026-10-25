@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { reactive } from "vue";
 import { UserPlus } from "@lucide/vue";
+import { reactive } from "vue";
 import type { ApiErrorPayload } from "~~/types";
 
 definePageMeta({ layout: "auth" });
@@ -47,7 +47,8 @@ const validate = (): boolean => {
   } else if (username.length < 3 || username.length > 30) {
     clientErrors.username = "Username harus 3–30 karakter.";
   } else if (!USERNAME_PATTERN.test(username)) {
-    clientErrors.username = "Username hanya boleh berisi huruf, angka, underscore, dan titik.";
+    clientErrors.username =
+      "Username hanya boleh berisi huruf, angka, underscore, dan titik.";
   }
 
   const email = form.email.trim();
@@ -101,7 +102,11 @@ const handleSubmit = async (): Promise<void> => {
 
   if (error) {
     isBusy.value = false;
-    if (typeof error.status === "number" && error.status >= 400 && error.status < 500) {
+    if (
+      typeof error.status === "number" &&
+      error.status >= 400 &&
+      error.status < 500
+    ) {
       // Field-level errors from the server pre-check (confirmPassword, dup
       // username/email) share the ApiErrorPayload shape of our API routes.
       applyServerErrors(
@@ -110,7 +115,8 @@ const handleSubmit = async (): Promise<void> => {
         },
       );
     } else if (error.code?.toUpperCase() === "TOO_MANY_REQUESTS") {
-      formError.value = "Terlalu banyak percobaan. Tunggu beberapa saat lalu coba lagi.";
+      formError.value =
+        "Terlalu banyak percobaan. Tunggu beberapa saat lalu coba lagi.";
     } else {
       formError.value = "Pendaftaran gagal. Silakan coba lagi.";
     }
@@ -130,7 +136,9 @@ const handleSubmit = async (): Promise<void> => {
 <template>
   <main class="w-full max-w-md">
     <div class="mb-8 text-center">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+      <p
+        class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted"
+      >
         Babacang Kelontong
       </p>
       <h1 class="mt-2 font-display text-2xl font-bold">Buat akun baru</h1>

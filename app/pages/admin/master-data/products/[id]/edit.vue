@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { ArrowLeft, LoaderCircle, PackageOpen, TriangleAlert } from "@lucide/vue";
+import {
+  ArrowLeft,
+  LoaderCircle,
+  PackageOpen,
+  TriangleAlert,
+} from "@lucide/vue";
 import type {
   BrandOption,
   CategoryOption,
@@ -36,17 +41,16 @@ const {
 
 const { data: categoryData } = await useAsyncData(
   "admin-product-edit-categories",
-  () => $fetch<CollectionResponse<CategoryOption>>("/api/categories/options"),
+  () => $fetch<CollectionResponse<CategoryOption>>("/api/options/categories"),
 );
 
 const { data: brandData } = await useAsyncData(
   "admin-product-edit-brands",
-  () => $fetch<CollectionResponse<BrandOption>>("/api/brands/options"),
+  () => $fetch<CollectionResponse<BrandOption>>("/api/options/brands"),
 );
 
-const { data: unitData } = await useAsyncData(
-  "admin-product-edit-units",
-  () => $fetch<CollectionResponse<UnitOption>>("/api/units/options"),
+const { data: unitData } = await useAsyncData("admin-product-edit-units", () =>
+  $fetch<CollectionResponse<UnitOption>>("/api/options/units"),
 );
 
 const product = computed(() => productData.value ?? null);
@@ -109,7 +113,9 @@ const handleSubmit = async (values: CreateProductInput): Promise<void> => {
       >
         Master Data
       </p>
-      <h2 class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">
+      <h2
+        class="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl"
+      >
         Edit Produk
       </h2>
       <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted">

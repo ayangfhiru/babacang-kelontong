@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ClipboardCheck, Plus, RefreshCw } from "@lucide/vue";
+import type { BadgeTone } from "~/components/ui/BaseBadge.vue";
 import type {
   PaginatedResponse,
   StockAdjustmentSummary,
   TransactionStatus,
 } from "~~/types";
-import type { BadgeTone } from "~/components/ui/BaseBadge.vue";
 
 usePageTitle("Penyesuaian Stok");
 
@@ -17,9 +17,12 @@ const page = ref(1);
 const { data, status, refresh } = await useAsyncData(
   "stock-adjustments",
   () =>
-    $fetch<PaginatedResponse<StockAdjustmentSummary>>("/api/stock-adjustments", {
-      query: { page: page.value, pageSize: 10 },
-    }),
+    $fetch<PaginatedResponse<StockAdjustmentSummary>>(
+      "/api/stock-adjustments",
+      {
+        query: { page: page.value, pageSize: 10 },
+      },
+    ),
   { watch: [page] },
 );
 
@@ -44,9 +47,7 @@ const formatDate = (value: string): string =>
         >
           Inventori
         </p>
-        <h2 class="mt-2 font-display text-3xl font-bold">
-          Penyesuaian Stok
-        </h2>
+        <h2 class="mt-2 font-display text-3xl font-bold">Penyesuaian Stok</h2>
         <p class="mt-2 text-sm text-muted">
           Catat selisih stok fisik terhadap stok sistem beserta alasannya.
         </p>

@@ -53,6 +53,8 @@ export interface ReturnSummary {
   date: string;
   itemCount: number;
   totalQty: number;
+  /** Inventory value of all returned items (sum of item subtotals). */
+  total: number;
   user: TransactionUserRef;
   createdAt: string;
 }

@@ -4,6 +4,7 @@ import {
   checkBarcode,
 } from "../../../services/product.service";
 import { parseWithSchema } from "../../../utils/validation";
+import { requireSession } from "../../../utils/auth";
 
 /**
  * GET /api/products/barcode/:barcode
@@ -13,6 +14,8 @@ import { parseWithSchema } from "../../../utils/validation";
  * end so leading zeros survive.
  */
 export default defineEventHandler(async (event) => {
+  await requireSession(event);
+
   const barcode = parseWithSchema(
     barcodeParamSchema,
     getRouterParam(event, "barcode"),

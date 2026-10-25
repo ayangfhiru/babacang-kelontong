@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { ChevronLeft, ChevronRight } from "@lucide/vue";
+import { computed } from "vue";
 
 interface Props {
   page: number;
@@ -19,8 +19,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{ "update:page": [page: number] }>();
 
-const rangeStart = computed(() => (props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1));
-const rangeEnd = computed(() => Math.min(props.page * props.pageSize, props.total));
+const rangeStart = computed(() =>
+  props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1,
+);
+const rangeEnd = computed(() =>
+  Math.min(props.page * props.pageSize, props.total),
+);
 const totalPagesLabel = computed(() => Math.max(props.totalPages, 1));
 </script>
 
@@ -29,11 +33,10 @@ const totalPagesLabel = computed(() => Math.max(props.totalPages, 1));
     class="flex flex-col items-center justify-between gap-4 border-t border-line/70 px-5 py-4 sm:flex-row sm:px-7"
   >
     <p class="text-sm text-muted">
-      Menampilkan
       <span class="font-semibold text-ink-2">{{ rangeStart }}</span>
-      s.d.
+      -
       <span class="font-semibold text-ink-2">{{ rangeEnd }}</span>
-      dari <span class="font-semibold text-ink-2">{{ total }}</span>
+      of <span class="font-semibold text-ink-2">{{ total }}</span>
       {{ totalLabel }}
     </p>
 
@@ -48,7 +51,9 @@ const totalPagesLabel = computed(() => Math.max(props.totalPages, 1));
         Sebelumnya
       </button>
 
-      <span class="px-2 font-mono text-sm font-semibold tabular-nums text-ink-2">
+      <span
+        class="px-2 font-mono text-sm font-semibold tabular-nums text-ink-2"
+      >
         {{ page }} / {{ totalPagesLabel }}
       </span>
 

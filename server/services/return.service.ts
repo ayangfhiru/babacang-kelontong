@@ -177,7 +177,7 @@ export const listReturns = async (
       where,
       include: {
         user: { select: { id: true, name: true } },
-        items: { select: { quantity: true } },
+        items: { select: { quantity: true, subtotal: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
@@ -194,6 +194,7 @@ export const listReturns = async (
       date: record.date.toISOString(),
       itemCount: record.items.length,
       totalQty: record.items.reduce((sum, item) => sum + item.quantity, 0),
+      total: record.items.reduce((sum, item) => sum + toMoney(item.subtotal), 0),
       user: record.user,
       createdAt: record.createdAt.toISOString(),
     })),

@@ -51,15 +51,18 @@ const quickLinks: QuickLink[] = [
 
 <template>
   <div class="space-y-6">
-    <section class="rounded-3xl border border-line/70 bg-surface p-6">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+    <section class="rounded-3xl border border-line/70 bg-surface p-6 mt-6">
+      <p
+        class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted"
+      >
         Beranda
       </p>
       <h2 class="mt-2 font-display text-2xl font-bold">
         Selamat datang kembali, {{ displayName }}!
       </h2>
       <p class="mt-2 text-sm text-muted">
-        Anda masuk sebagai {{ roleLabel }}. Pilih menu cepat di bawah untuk mulai bekerja.
+        Anda masuk sebagai {{ roleLabel }}. Pilih menu cepat di bawah untuk
+        mulai bekerja.
       </p>
     </section>
 

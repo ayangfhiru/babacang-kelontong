@@ -9,6 +9,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "@lucide/vue";
+import ProductBarcodeScannerModal from "~/components/product/ProductBarcodeScannerModal.vue";
 import type {
   BarcodeCheckProduct,
   BrandOption,
@@ -18,7 +19,6 @@ import type {
   Product,
   UnitOption,
 } from "~~/types";
-import ProductBarcodeScannerModal from "~/components/product/ProductBarcodeScannerModal.vue";
 
 usePageTitle("Produk");
 
@@ -92,17 +92,17 @@ const loadFailed = computed(() => Boolean(error.value));
 
 const { data: categoryOptionsData } = await useAsyncData(
   "admin-product-category-options",
-  () => $fetch<CollectionResponse<CategoryOption>>("/api/categories/options"),
+  () => $fetch<CollectionResponse<CategoryOption>>("/api/options/categories"),
 );
 
 const { data: brandOptionsData } = await useAsyncData(
   "admin-product-brand-options",
-  () => $fetch<CollectionResponse<BrandOption>>("/api/brands/options"),
+  () => $fetch<CollectionResponse<BrandOption>>("/api/options/brands"),
 );
 
 const { data: unitOptionsData } = await useAsyncData(
   "admin-product-unit-options",
-  () => $fetch<CollectionResponse<UnitOption>>("/api/units/options"),
+  () => $fetch<CollectionResponse<UnitOption>>("/api/options/units"),
 );
 
 const categoryOptions = computed(() => categoryOptionsData.value?.data ?? []);
@@ -235,10 +235,7 @@ const handleBarcodeNotFound = async (barcode: string): Promise<void> => {
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <BaseButton
-          variant="secondary"
-          @click="isScannerOpen = true"
-        >
+        <BaseButton variant="secondary" @click="isScannerOpen = true">
           <ScanBarcode class="h-4 w-4" />
           Scan Barcode
         </BaseButton>
@@ -409,7 +406,11 @@ const handleBarcodeNotFound = async (barcode: string): Promise<void> => {
                       type="button"
                       class="grid h-9 w-9 place-items-center rounded-xl text-muted transition-colors hover:bg-brand-soft hover:text-brand"
                       :aria-label="`Edit ${product.name}`"
-                      @click="navigateTo(`/admin/master-data/products/${product.id}/edit`)"
+                      @click="
+                        navigateTo(
+                          `/admin/master-data/products/${product.id}/edit`,
+                        )
+                      "
                     >
                       <Pencil class="h-4 w-4" />
                     </button>
@@ -471,7 +472,9 @@ const handleBarcodeNotFound = async (barcode: string): Promise<void> => {
                   type="button"
                   class="grid h-9 w-9 place-items-center rounded-xl border border-line text-muted transition-colors hover:text-brand"
                   :aria-label="`Edit ${product.name}`"
-                  @click="navigateTo(`/admin/master-data/products/${product.id}/edit`)"
+                  @click="
+                    navigateTo(`/admin/master-data/products/${product.id}/edit`)
+                  "
                 >
                   <Pencil class="h-4 w-4" />
                 </button>

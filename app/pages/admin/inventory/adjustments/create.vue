@@ -7,6 +7,8 @@ import {
   ScanBarcode,
   Trash2,
 } from "@lucide/vue";
+import ProductBarcodeScannerModal from "~/components/product/ProductBarcodeScannerModal.vue";
+import type { SelectOption } from "~/components/ui/BaseSelect.vue";
 import type {
   BarcodeCheckProduct,
   CreateStockAdjustmentInput,
@@ -15,8 +17,6 @@ import type {
   StockAdjustment,
   StockAvailability,
 } from "~~/types";
-import type { SelectOption } from "~/components/ui/BaseSelect.vue";
-import ProductBarcodeScannerModal from "~/components/product/ProductBarcodeScannerModal.vue";
 
 usePageTitle("Penyesuaian Stok Baru");
 

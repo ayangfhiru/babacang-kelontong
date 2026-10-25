@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { reactive } from "vue";
 import { LogIn } from "@lucide/vue";
+import { reactive } from "vue";
 import { isSafeInternalPath } from "~/utils/navigation";
 
 definePageMeta({ layout: "auth" });
